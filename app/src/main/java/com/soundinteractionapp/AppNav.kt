@@ -13,8 +13,15 @@ sealed class Screen(val route: String) {
     object DogInteraction : Screen("interaction/dog")
     object BirdInteraction : Screen("interaction/bird")
     object DrumInteraction : Screen("interaction/drum")
-    object WaveInteraction : Screen("interaction/wave")
-    object BellInteraction : Screen("interaction/bell") // <-- [新增] 鈴鐺路由
+
+    // [修改] 改名為 OceanInteraction 以配合畫面名稱
+    object OceanInteraction : Screen("interaction/ocean")
+
+    // [新增] 預留給未來的雨和風
+    object RainInteraction : Screen("interaction/rain")
+    object WindInteraction : Screen("interaction/wind")
+
+    object BellInteraction : Screen("interaction/bell")
 
     // 四個獨立的遊戲關卡路由
     object GameLevel1 : Screen("game/level1")

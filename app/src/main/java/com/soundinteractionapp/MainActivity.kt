@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateToDogInteraction = { navController.navigate(Screen.DogInteraction.route) },
                             onNavigateToBirdInteraction = { navController.navigate(Screen.BirdInteraction.route) },
                             onNavigateToDrumInteraction = { navController.navigate(Screen.DrumInteraction.route) },
-                            onNavigateToOceanInteraction = { navController.navigate(Screen.WaveInteraction.route) },
+                            onNavigateToOceanInteraction = { navController.navigate(Screen.OceanInteraction.route) },
                             onNavigateToBellInteraction = { // <-- [新增]
                                 navController.navigate(Screen.BellInteraction.route)
                             }
@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
                             soundManager = soundManager
                         )
                     }
-                    composable(Screen.WaveInteraction.route) {
+                    composable(Screen.OceanInteraction.route) {
                         OceanInteractionScreen(
                             onNavigateBack = { navController.popBackStack() },
                             soundManager = soundManager
