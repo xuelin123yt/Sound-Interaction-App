@@ -1,23 +1,22 @@
 package com.soundinteractionapp
 
+// 定義應用程式的主要模式，用於導航
 sealed class Screen(val route: String) {
     object Welcome : Screen("welcome")
-    object FreePlay : Screen("freeplay")
     object Relax : Screen("relax")
     object Game : Screen("game")
+    object FreePlay : Screen("freeplay")
 
-    // 自由探索 - 9個互動畫面
+    // 互動畫面路由
     object CatInteraction : Screen("interaction/cat")
+    object PianoInteraction : Screen("interaction/piano")
     object DogInteraction : Screen("interaction/dog")
     object BirdInteraction : Screen("interaction/bird")
-    object PianoInteraction : Screen("interaction/piano")
     object DrumInteraction : Screen("interaction/drum")
-    object BellInteraction : Screen("interaction/bell")
-    object RainInteraction : Screen("interaction/rain")
-    object OceanInteraction : Screen("interaction/ocean")
-    object WindInteraction : Screen("interaction/wind")
+    object WaveInteraction : Screen("interaction/wave")
+    object BellInteraction : Screen("interaction/bell") // <-- [新增] 鈴鐺路由
 
-    // 遊戲訓練 - 4個關卡
+    // 四個獨立的遊戲關卡路由
     object GameLevel1 : Screen("game/level1")
     object GameLevel2 : Screen("game/level2")
     object GameLevel3 : Screen("game/level3")

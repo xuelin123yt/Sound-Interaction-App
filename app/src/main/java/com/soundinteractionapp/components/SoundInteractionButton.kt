@@ -1,7 +1,9 @@
 package com.soundinteractionapp.components
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.interaction.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,6 +15,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * 自由探索模式中的單個聲音互動按鈕。
+ * 這是一個公共元件，供其他畫面調用。
+ */
 @Composable
 fun RowScope.SoundInteractionButton(
     soundName: String,
@@ -43,7 +49,10 @@ fun RowScope.SoundInteractionButton(
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CompositionLocalProvider(
                     LocalTextStyle provides MaterialTheme.typography.displayLarge.copy(
