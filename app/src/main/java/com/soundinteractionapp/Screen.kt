@@ -27,4 +27,8 @@ sealed class Screen(val route: String) {
     object GameLevel2 : Screen("game/level2")
     object GameLevel3 : Screen("game/level3")
     object GameLevel4 : Screen("game/level4")
+
+    ////////////////////////新增////////////////////////
+    object GameMode : Screen("game_mode")
+    ////////////////////////新增////////////////////////
 }

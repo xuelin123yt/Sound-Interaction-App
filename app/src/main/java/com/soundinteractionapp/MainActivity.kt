@@ -38,6 +38,13 @@ import com.soundinteractionapp.screens.game.levels.Level2FindAnimalScreen
 import com.soundinteractionapp.screens.game.levels.Level3PitchScreen
 import com.soundinteractionapp.screens.game.levels.Level4CompositionScreen
 
+////////////////////////新增////////////////////////
+import com.soundinteractionapp.screens.game.GameModeScreenContent
+import com.soundinteractionapp.screens.game.levels.Level1FollowBeatScreen
+// 【確認此行或類似的 Import 存在】
+import com.soundinteractionapp.screens.game.levels.Level2FindAnimalScreen
+////////////////////////新增////////////////////////
+
 class MainActivity : ComponentActivity() {
 
     private lateinit var soundManager: SoundManager
@@ -176,11 +183,12 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+
                     // --- 遊戲訓練模式 ---
                     composable(Screen.Game.route) {
                         GameModeScreenContent(
                             onNavigateBack = { navController.popBackStack() },
-                            onNavigateToLevel = { route -> navController.navigate(route) }
+                            onNavigateToLevel = { route -> navController.navigate(route) },
                         )
                     }
 

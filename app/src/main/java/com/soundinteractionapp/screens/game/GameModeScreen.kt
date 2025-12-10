@@ -32,6 +32,12 @@ import androidx.compose.ui.zIndex
 import com.soundinteractionapp.R
 import com.soundinteractionapp.Screen
 import kotlin.math.absoluteValue
+////////////////////////新增////////////////////////
+import androidx.compose.material.icons.filled.EmojiEvents // 獎盃圖示
+import androidx.compose.ui.window.Dialog
+import com.soundinteractionapp.screens.game.levels.RankingDialogContent
+
+////////////////////////新增////////////////////////
 
 // =====================================================
 // 🎵 簡易版 SoundManager (如果你的專案已有全域的，可直接引用)
@@ -88,6 +94,8 @@ fun GameModeScreenContent(onNavigateBack: () -> Unit, onNavigateToLevel: (String
     // 初始化音效管理器
     val soundManager = remember { GameModeSoundManager(context) }
 
+    var showRankingDialog by remember { mutableStateOf(false) }
+
     // 記得釋放資源
     DisposableEffect(Unit) {
         onDispose { soundManager.release() }
@@ -136,8 +144,21 @@ fun GameModeScreenContent(onNavigateBack: () -> Unit, onNavigateToLevel: (String
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
-                // 佔位，保持標題置中
-                Spacer(modifier = Modifier.width(80.dp))
+
+                ////////////////////////新增////////////////////////
+                // 【替換】右側：新增的排名圖示按鈕 (獎盃)
+                IconButton(
+                    onClick = { showRankingDialog = true }, // 點擊時呼叫導航
+                    modifier = Modifier.size(50.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.EmojiEvents, // 使用獎盃圖示
+                        contentDescription = "查看排名",
+                        tint = MaterialTheme.colorScheme.primary, // 使用主題色
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                ////////////////////////新增/////////////////////////
             }
 
             // -------------------------------------------------
@@ -160,6 +181,18 @@ fun GameModeScreenContent(onNavigateBack: () -> Unit, onNavigateToLevel: (String
                         onNavigateToLevel(route)
                     }
                 )
+
+                ////////////////////////新增////////////////////////
+                if (showRankingDialog) {
+                    // 使用 Dialog 元件
+                    Dialog(onDismissRequest = { showRankingDialog = false }) {
+                        // 呼叫排名內容畫面，並傳遞關閉視窗的動作
+                        RankingDialogContent(
+                            onClose = { showRankingDialog = false } // 傳遞關閉自身的操作
+                        )
+                    }
+                }
+                ////////////////////////新增////////////////////////
             }
         }
     }
