@@ -205,10 +205,10 @@ fun SettingScreen(
                             // 重置音量
                             masterVolume = 1.0f
                             musicVolume = 1.0f
-                            sfxVolume = 0.5f
+                            sfxVolume = 1.0f
                             soundManager.masterVolume = 1.0f
                             soundManager.musicVolume = 1.0f
-                            soundManager.sfxVolume = 0.5f
+                            soundManager.sfxVolume = 1.0f
 
                             // 取消所有靜音
                             if (soundManager.isMasterMuted) soundManager.toggleMasterMute()
