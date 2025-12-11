@@ -61,6 +61,10 @@ class SoundManager(private val context: Context) {
     private var bgmPlayer: MediaPlayer? = null
     private var currentBgmResId: Int? = null
 
+    // ✅ 新增：記錄 BGM 是否因為 App 暫停而被暫停，以及暫停時的播放位置
+    private var wasBgmPlayingBeforePause = false
+    private var bgmPausePosition = 0
+
     // --- 打擊音效 (SFX) 用的 SoundPool ---
     private val soundPool: SoundPool
     private val soundMap = mutableMapOf<String, Int>()
@@ -207,6 +211,12 @@ class SoundManager(private val context: Context) {
             return
         }
 
+        // ✅ 如果是相同的 BGM 但已暫停，恢復播放
+        if (currentBgmResId == resId && bgmPlayer != null) {
+            bgmPlayer?.start()
+            return
+        }
+
         stopBgm()
 
         try {
@@ -221,6 +231,7 @@ class SoundManager(private val context: Context) {
                 start()
             }
             currentBgmResId = resId
+            bgmPausePosition = 0
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -236,6 +247,8 @@ class SoundManager(private val context: Context) {
         }
         bgmPlayer = null
         currentBgmResId = null
+        wasBgmPlayingBeforePause = false
+        bgmPausePosition = 0
     }
 
     /**
@@ -261,6 +274,55 @@ class SoundManager(private val context: Context) {
         }
         bgmPlayer?.release()
         bgmPlayer = null
+    }
+
+    /**
+     * ✅ 新增：暫停所有音樂 (當 App 進入後台時)
+     */
+    fun pauseAllAudio() {
+        bgmPlayer?.let { player ->
+            try {
+                if (player.isPlaying) {
+                    bgmPausePosition = player.currentPosition
+                    wasBgmPlayingBeforePause = true
+                    player.pause()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                wasBgmPlayingBeforePause = false
+            }
+        }
+    }
+
+    /**
+     * ✅ 新增：恢復所有音樂 (當 App 回到前台時)
+     */
+    fun resumeAllAudio() {
+        if (wasBgmPlayingBeforePause && bgmPlayer != null) {
+            try {
+                bgmPlayer?.apply {
+                    seekTo(bgmPausePosition)
+                    start()
+                }
+                wasBgmPlayingBeforePause = false
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // 如果恢復失敗，嘗試重新播放當前的 BGM
+                currentBgmResId?.let { resId ->
+                    stopBgm()
+                    playBgm(resId)
+                }
+            }
+        }
+    }
+
+    /**
+     * ✅ 新增：停止所有音樂 (當 App 被停止時)
+     */
+    fun stopAllAudio() {
+        stopBgm()
+        wasBgmPlayingBeforePause = false
+        bgmPausePosition = 0
     }
 
     /**

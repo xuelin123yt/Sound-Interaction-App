@@ -9,9 +9,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue // ★修改: 需要這個 import
-import androidx.compose.runtime.mutableStateOf // ★修改: 需要這個 import
-import androidx.compose.runtime.setValue // ★修改: 需要這個 import
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
@@ -119,7 +119,6 @@ class MainActivity : ComponentActivity() {
                 }
 
                 NavHost(navController = navController, startDestination = Screen.Splash.route) {
-                    // ... (路由設定保持不變，省略以節省篇幅) ...
                     composable(Screen.Splash.route) { SplashScreen(navController) }
                     composable(Screen.Welcome.route) {
                         WelcomeScreen(soundManager,
@@ -209,7 +208,25 @@ class MainActivity : ComponentActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    // ... 其餘程式碼保持不變 (hideSystemUI 等) ...
+    // ✅ 新增：當 App 進入後台時暫停音樂
+    override fun onPause() {
+        super.onPause()
+        if (::soundManager.isInitialized) {
+            soundManager.pauseAllAudio()
+        }
+    }
+
+    // ✅ 新增：當 App 回到前台時恢復音樂
+    override fun onResume() {
+        super.onResume()
+        if (::soundManager.isInitialized) {
+            soundManager.resumeAllAudio()
+        }
+    }
+
+    // ✅ 修改：移除 onStop，讓音樂在後台保持暫停狀態
+    // 只在 onDestroy 時才完全釋放資源
+
     private fun hideSystemUI() {
         window.setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
