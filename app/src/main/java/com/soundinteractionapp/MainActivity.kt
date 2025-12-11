@@ -6,8 +6,14 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue // ★修改: 需要這個 import
+import androidx.compose.runtime.mutableStateOf // ★修改: 需要這個 import
+import androidx.compose.runtime.setValue // ★修改: 需要這個 import
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -20,39 +26,27 @@ import com.soundinteractionapp.screens.SplashScreen
 import com.soundinteractionapp.screens.WelcomeScreen
 import com.soundinteractionapp.screens.SettingScreen
 import com.soundinteractionapp.screens.profile.ProfileScreen
-
-// FreePlay Mode Imports
 import com.soundinteractionapp.components.FreePlayScreenContent
 import com.soundinteractionapp.screens.freeplay.interactions.*
-
-// Relax Mode Imports
 import com.soundinteractionapp.screens.relax.RelaxScreenContent
 import com.soundinteractionapp.screens.relax.ambiences.OceanInteractionScreen
 import com.soundinteractionapp.screens.relax.ambiences.RainInteractionScreen
 import com.soundinteractionapp.screens.relax.ambiences.WindInteractionScreen
-
-// Game Mode Imports
 import com.soundinteractionapp.screens.game.GameModeScreenContent
 import com.soundinteractionapp.screens.game.levels.Level1FollowBeatScreen
 import com.soundinteractionapp.screens.game.levels.Level2FindAnimalScreen
 import com.soundinteractionapp.screens.game.levels.Level3PitchScreen
 import com.soundinteractionapp.screens.game.levels.Level4CompositionScreen
-
-////////////////////////新增////////////////////////
-// 【確認此行或類似的 Import 存在】
-import androidx.activity.viewModels
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import com.soundinteractionapp.data.RankingRepository
 import com.soundinteractionapp.data.RankingViewModel
-
-////////////////////////新增////////////////////////
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var soundManager: SoundManager
-
     private val rankingRepository = RankingRepository()
+
+    // ★修改 1: 新增變數用來追蹤是否在遊戲關卡中
+    private var isInGameLevel by mutableStateOf(false)
 
     private val rankingViewModel by viewModels<RankingViewModel> {
         object : ViewModelProvider.Factory {
@@ -69,7 +63,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 設定全螢幕模式
         hideSystemUI()
         window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
             if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
@@ -77,48 +70,42 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 初始化 SoundManager
         soundManager = SoundManager(this)
 
         setContent {
             SoundInteractionAppTheme {
                 val navController = rememberNavController()
 
-                // 確保離開 App 時釋放音訊資源
                 DisposableEffect(Unit) {
                     onDispose { soundManager.release() }
                 }
 
                 // 監聽當前路由
-                val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
 
-                // 根據路由控制 BGM 播放
+                // ★修改 2: 根據路由判斷是否需要攔截按鍵 (是否為遊戲關卡)
                 LaunchedEffect(currentRoute) {
-                    when (currentRoute) {
-                        // ✅ Splash 畫面不播放 BGM (LoginScreen 的 BGM 由 WelcomeScreen 控制)
-                        Screen.Splash.route -> {
-                            soundManager.stopBgm()
-                        }
-                        // 關卡中停止 BGM
+                    isInGameLevel = when (currentRoute) {
                         Screen.GameLevel1.route,
                         Screen.GameLevel2.route,
                         Screen.GameLevel3.route,
-                        Screen.GameLevel4.route -> {
-                            soundManager.stopBgm()
-                        }
-                        // 設定頁面播放 BGM
-                        Screen.Settings.route -> {
-                            soundManager.playBgm(R.raw.bgm)
-                        }
-                        // Welcome 的 BGM 由 WelcomeScreen 內部的 LaunchedEffect 控制
-                        // 其他頁面播放 BGM
+                        Screen.GameLevel4.route -> true
+                        else -> false
+                    }
+
+                    // 原有的 BGM 控制邏輯保持不變
+                    when (currentRoute) {
+                        Screen.Splash.route -> soundManager.stopBgm()
+                        Screen.GameLevel1.route,
+                        Screen.GameLevel2.route,
+                        Screen.GameLevel3.route,
+                        Screen.GameLevel4.route -> soundManager.stopBgm()
+                        Screen.Settings.route -> soundManager.playBgm(R.raw.bgm)
                         Screen.FreePlay.route,
                         Screen.Relax.route,
                         Screen.Game.route,
-                        Screen.Profile.route -> {
-                            soundManager.playBgm(R.raw.bgm)
-                        }
-                        // 個別互動畫面也播放 BGM
+                        Screen.Profile.route -> soundManager.playBgm(R.raw.bgm)
                         Screen.CatInteraction.route,
                         Screen.PianoInteraction.route,
                         Screen.DogInteraction.route,
@@ -127,129 +114,66 @@ class MainActivity : ComponentActivity() {
                         Screen.BellInteraction.route,
                         Screen.OceanInteraction.route,
                         Screen.RainInteraction.route,
-                        Screen.WindInteraction.route -> {
-                            soundManager.playBgm(R.raw.bgm)
-                        }
+                        Screen.WindInteraction.route -> soundManager.playBgm(R.raw.bgm)
                     }
                 }
 
                 NavHost(navController = navController, startDestination = Screen.Splash.route) {
-
-                    // --- 啟動與登入流程 ---
-                    composable(Screen.Splash.route) {
-                        SplashScreen(navController = navController)
-                    }
-
+                    // ... (路由設定保持不變，省略以節省篇幅) ...
+                    composable(Screen.Splash.route) { SplashScreen(navController) }
                     composable(Screen.Welcome.route) {
-                        WelcomeScreen(
-                            soundManager = soundManager,
-                            onNavigateToFreePlay = { navController.navigate(Screen.FreePlay.route) },
-                            onNavigateToRelax = { navController.navigate(Screen.Relax.route) },
-                            onNavigateToGame = { navController.navigate(Screen.Game.route) },
-                            onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
-                            onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                            onLogout = {
-                                navController.navigate(Screen.Splash.route) {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
+                        WelcomeScreen(soundManager,
+                            { navController.navigate(Screen.FreePlay.route) },
+                            { navController.navigate(Screen.Relax.route) },
+                            { navController.navigate(Screen.Game.route) },
+                            { navController.navigate(Screen.Profile.route) },
+                            { navController.navigate(Screen.Settings.route) },
+                            { navController.navigate(Screen.Splash.route) { popUpTo(0) { inclusive = true } } }
                         )
                     }
-
-                    composable(Screen.Profile.route) {
-                        ProfileScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                            onAccountDeleted = {
-                                navController.navigate(Screen.Splash.route) {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            }
-                        )
-                    }
-
-                    // ✅ 設定頁面
-                    composable(Screen.Settings.route) {
-                        SettingScreen(
-                            soundManager = soundManager,
-                            onNavigateBack = { navController.popBackStack() }
-                        )
-                    }
-
-                    // --- 自由探索模式 ---
+                    composable(Screen.Profile.route) { ProfileScreen({ navController.popBackStack() }, { navController.navigate(Screen.Splash.route) { popUpTo(0) { inclusive = true } } }) }
+                    composable(Screen.Settings.route) { SettingScreen(soundManager, { navController.popBackStack() }) }
                     composable(Screen.FreePlay.route) {
                         FreePlayScreenContent(
-                            onNavigateBack = { navController.popBackStack() },
-                            soundManager = soundManager,
-                            onNavigateToCatInteraction = { navController.navigate(Screen.CatInteraction.route) },
-                            onNavigateToPianoInteraction = { navController.navigate(Screen.PianoInteraction.route) },
-                            onNavigateToDogInteraction = { navController.navigate(Screen.DogInteraction.route) },
-                            onNavigateToBirdInteraction = { navController.navigate(Screen.BirdInteraction.route) },
-                            onNavigateToDrumInteraction = { navController.navigate(Screen.DrumInteraction.route) },
-                            onNavigateToBellInteraction = { navController.navigate(Screen.BellInteraction.route) }
+                            { navController.popBackStack() }, soundManager,
+                            { navController.navigate(Screen.CatInteraction.route) },
+                            { navController.navigate(Screen.PianoInteraction.route) },
+                            { navController.navigate(Screen.DogInteraction.route) },
+                            { navController.navigate(Screen.BirdInteraction.route) },
+                            { navController.navigate(Screen.DrumInteraction.route) },
+                            { navController.navigate(Screen.BellInteraction.route) }
                         )
                     }
-
-                    // --- 放鬆模式 ---
                     composable(Screen.Relax.route) {
                         RelaxScreenContent(
-                            onNavigateBack = { navController.popBackStack() },
-                            soundManager = soundManager,
-                            onNavigateToOceanInteraction = { navController.navigate(Screen.OceanInteraction.route) },
-                            onNavigateToRainInteraction = { navController.navigate(Screen.RainInteraction.route) },
-                            onNavigateToWindInteraction = { navController.navigate(Screen.WindInteraction.route) }
+                            { navController.popBackStack() }, soundManager,
+                            { navController.navigate(Screen.OceanInteraction.route) },
+                            { navController.navigate(Screen.RainInteraction.route) },
+                            { navController.navigate(Screen.WindInteraction.route) }
                         )
                     }
-
-
-                    // --- 遊戲訓練模式 ---
                     composable(Screen.Game.route) {
-                        GameModeScreenContent(
-                            onNavigateBack = { navController.popBackStack() },
-                            onNavigateToLevel = { route -> navController.navigate(route) },
-
-                            ////////////////////////新增////////////////////////
-                            rankingViewModel = rankingViewModel
-                            ////////////////////////新增////////////////////////
-
-                        )
+                        GameModeScreenContent({ navController.popBackStack() }, { route -> navController.navigate(route) }, rankingViewModel)
                     }
-
-                    // Level 1: 太鼓節奏
                     composable(Screen.GameLevel1.route) {
-                        Level1FollowBeatScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                            soundManager = soundManager,
-                            rankingViewModel = rankingViewModel
-                        )
+                        Level1FollowBeatScreen({ navController.popBackStack() }, soundManager, rankingViewModel)
                     }
-
-                    // 其他關卡
-                    composable(Screen.GameLevel2.route) {
-                        Level2FindAnimalScreen(onNavigateBack = { navController.popBackStack() })
-                    }
-                    composable(Screen.GameLevel3.route) {
-                        Level3PitchScreen(onNavigateBack = { navController.popBackStack() })
-                    }
-                    composable(Screen.GameLevel4.route) {
-                        Level4CompositionScreen(onNavigateBack = { navController.popBackStack() })
-                    }
-
-                    // --- 個別互動畫面 ---
-                    composable(Screen.CatInteraction.route) { CatInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
-                    composable(Screen.PianoInteraction.route) { PianoInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
-                    composable(Screen.DogInteraction.route) { DogInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
-                    composable(Screen.BirdInteraction.route) { BirdInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
-                    composable(Screen.DrumInteraction.route) { DrumInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
-                    composable(Screen.BellInteraction.route) { BellInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
-                    composable(Screen.OceanInteraction.route) { OceanInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
-                    composable(Screen.RainInteraction.route) { RainInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
-                    composable(Screen.WindInteraction.route) { WindInteractionScreen(onNavigateBack = { navController.popBackStack() }, soundManager = soundManager) }
+                    composable(Screen.GameLevel2.route) { Level2FindAnimalScreen({ navController.popBackStack() }) }
+                    composable(Screen.GameLevel3.route) { Level3PitchScreen({ navController.popBackStack() }) }
+                    composable(Screen.GameLevel4.route) { Level4CompositionScreen({ navController.popBackStack() }) }
+                    composable(Screen.CatInteraction.route) { CatInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.PianoInteraction.route) { PianoInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.DogInteraction.route) { DogInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.BirdInteraction.route) { BirdInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.DrumInteraction.route) { DrumInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.BellInteraction.route) { BellInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.OceanInteraction.route) { OceanInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.RainInteraction.route) { RainInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.WindInteraction.route) { WindInteractionScreen({ navController.popBackStack() }, soundManager) }
                 }
             }
         }
     }
-
-
 
     // --- 實體按鍵監聽 ---
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -257,7 +181,17 @@ class MainActivity : ComponentActivity() {
             return super.onKeyDown(keyCode, event)
         }
 
-        // 攔截音量鍵和其他媒體鍵,轉為遊戲打擊訊號
+        // ★修改 3: 加入邏輯判斷
+        // 如果是音量鍵，且目前「不在」遊戲關卡中 -> 執行 super.onKeyDown (允許系統調整音量)
+        // 如果是音量鍵，且目前「在」遊戲關卡中 -> 攔截並觸發打擊
+
+        val isVolumeKey = keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+
+        if (isVolumeKey && !isInGameLevel) {
+            // 如果不在遊戲中，讓系統處理音量鍵 (這樣你就可以調整音量了)
+            return super.onKeyDown(keyCode, event)
+        }
+
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP,
             KeyEvent.KEYCODE_VOLUME_DOWN,
@@ -266,14 +200,16 @@ class MainActivity : ComponentActivity() {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
             KeyEvent.KEYCODE_CAMERA,
             KeyEvent.KEYCODE_DPAD_CENTER -> {
+                // 這裡只會在 isInGameLevel 為 true 時，或者按的是非音量鍵時執行
                 GameInputManager.triggerBeat()
-                return true // 阻止系統處理音量變化
+                return true // 阻止系統處理 (例如阻止跳出音量條)
             }
         }
 
         return super.onKeyDown(keyCode, event)
     }
 
+    // ... 其餘程式碼保持不變 (hideSystemUI 等) ...
     private fun hideSystemUI() {
         window.setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
