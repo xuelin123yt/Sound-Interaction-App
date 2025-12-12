@@ -1,8 +1,33 @@
+import java.io.ByteArrayOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
+}
+
+// 獲取 Git Commit Hash
+fun getGitCommitHash(): String {
+    return try {
+        val stdout = ByteArrayOutputStream()
+        exec {
+            commandLine("git", "rev-parse", "--short", "HEAD")
+            standardOutput = stdout
+        }
+        stdout.toString().trim()
+    } catch (e: Exception) {
+        "unknown"
+    }
+}
+
+// 獲取當前編譯日期
+fun getBuildDate(): String {
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    return dateFormat.format(Date())
 }
 
 android {
@@ -17,6 +42,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // ✅ 生成 BuildConfig 欄位
+        buildConfigField("String", "COMMIT_HASH", "\"${getGitCommitHash()}\"")
+        buildConfigField("String", "BUILD_DATE", "\"${getBuildDate()}\"")
+
         externalNativeBuild {
             cmake {
                 cppFlags("-std=c++17")
@@ -52,7 +82,9 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true  // ✅ 啟用 BuildConfig
     }
+
     ndkVersion = "27.0.12077973"
 }
 
@@ -69,7 +101,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.androidx.material.icons.extended)   // ← 修正名稱
+    implementation(libs.androidx.material.icons.extended)
 
     // Navigation
     implementation(libs.androidx.navigation.compose)
@@ -95,8 +127,9 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(libs.coroutines.play.services)
 
-    // Coil
+    // Coil (支援 GIF 動畫)
     implementation(libs.coil.compose)
+    implementation("io.coil-kt:coil-gif:2.5.0")
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.database)
 

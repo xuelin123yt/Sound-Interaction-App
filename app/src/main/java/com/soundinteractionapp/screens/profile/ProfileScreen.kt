@@ -103,7 +103,7 @@ fun ProfileScreen(
         ) {
             // 訪客模式提示
             if (isAnonymous) {
-                AnonymousWarning(onLoginClick = onNavigateToLogin)
+                AnonymousWarning()
                 Spacer(Modifier.height(24.dp))
             }
 
@@ -149,22 +149,11 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            // ✅ 只保留刪除帳號按鈕 (移除登出按鈕)
+            // ✅ 只在非訪客模式下顯示刪除帳號按鈕
             if (!isAnonymous) {
-                // 刪除帳號按鈕
                 DeleteAccountButton(
                     onClick = { showDeleteDialog = true }
                 )
-            } else {
-                // 訪客模式顯示去登入按鈕
-                Button(
-                    onClick = onNavigateToLogin,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7)),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("註冊 / 登入 正式帳號", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -268,12 +257,11 @@ fun ScoreRowItem(label: String, score: Int, color: Color) {
  * 訪客模式警告提示
  */
 @Composable
-private fun AnonymousWarning(onLoginClick: () -> Unit) {
+private fun AnonymousWarning() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
-        shape = RoundedCornerShape(12.dp),
-        onClick = onLoginClick
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -286,19 +274,12 @@ private fun AnonymousWarning(onLoginClick: () -> Unit) {
                 modifier = Modifier.size(24.dp)
             )
             Spacer(Modifier.width(12.dp))
-            Column {
-                Text(
-                    "您目前是訪客身分",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFE65100)
-                )
-                Text(
-                    "點此註冊以保存分數與成就",
-                    fontSize = 12.sp,
-                    color = Color(0xFFE65100).copy(alpha = 0.8f)
-                )
-            }
+            Text(
+                "您目前以訪客身分登入，無法修改個人資料",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFFE65100)
+            )
         }
     }
 }
