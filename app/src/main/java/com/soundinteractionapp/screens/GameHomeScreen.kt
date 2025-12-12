@@ -56,13 +56,16 @@ fun GameHomeScreen(
     onLogout: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
-    val isLoggingOut = remember { mutableStateOf(false) }
+    // ✅ 登出狀態控制
+    var isLoggingOut by remember { mutableStateOf(false) }
 
+    // ✅ 黑屏動畫（700ms 淡入）
     val blackAlpha by animateFloatAsState(
-        targetValue = if (isLoggingOut.value) 1f else 0f,
+        targetValue = if (isLoggingOut) 1f else 0f,
         animationSpec = tween(700),
         finishedListener = {
-            if (isLoggingOut.value) {
+            // ✅ 動畫完成後才執行登出導航
+            if (isLoggingOut) {
                 onLogout()
             }
         }
@@ -71,20 +74,47 @@ fun GameHomeScreen(
     var currentIndex by remember { mutableStateOf(1) }
 
     val modes = listOf(
-        ModeData("自由探索", "模式一", "自由觸碰螢幕,探索各種聲音與互動", R.drawable.music_01, Color(0xFF8C7AE6), onNavigateToFreePlay),
-        ModeData("放鬆時光", "模式二", "聆聽舒緩音樂,放鬆身心享受時光", R.drawable.music_02, Color(0xFF4FC3F7), onNavigateToRelax),
-        ModeData("音樂遊戲", "模式三", "跟著節奏玩遊戲,訓練反應能力", R.drawable.music_03, Color(0xFFFF9800), onNavigateToGame)
+        ModeData(
+            "自由探索",
+            "模式一",
+            "自由觸碰螢幕,探索各種聲音與互動",
+            R.drawable.music_01,
+            Color(0xFF8C7AE6),
+            onNavigateToFreePlay
+        ),
+        ModeData(
+            "放鬆時光",
+            "模式二",
+            "聆聽舒緩音樂,放鬆身心享受時光",
+            R.drawable.music_02,
+            Color(0xFF4FC3F7),
+            onNavigateToRelax
+        ),
+        ModeData(
+            "音樂遊戲",
+            "模式三",
+            "跟著節奏玩遊戲,訓練反應能力",
+            R.drawable.music_03,
+            Color(0xFFFF9800),
+            onNavigateToGame
+        )
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF4F4F4))) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF4F4F4))
+        ) {
             TopInfoBar(
                 soundManager = soundManager,
                 onNavigateToProfile = onNavigateToProfile,
                 onNavigateToSettings = onNavigateToSettings,
+                // ✅ 點擊登出時觸發黑屏動畫
                 onLogoutStart = {
                     soundManager.playSFX("cancel")
-                    isLoggingOut.value = true
+                    soundManager.stopBgm() // ✅ 立即停止 BGM
+                    isLoggingOut = true
                 },
                 authViewModel = authViewModel
             )
@@ -96,7 +126,9 @@ fun GameHomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    modifier = Modifier.weight(1f).padding(end = 40.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 40.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -117,7 +149,10 @@ fun GameHomeScreen(
                             fontWeight = FontWeight.Black,
                             style = TextStyle(
                                 brush = Brush.linearGradient(
-                                    colors = listOf(Color(0xFF8B5CF6), Color(0xFFEC4899))
+                                    colors = listOf(
+                                        Color(0xFF8B5CF6),
+                                        Color(0xFFEC4899)
+                                    )
                                 ),
                                 letterSpacing = (-1.5).sp,
                                 shadow = Shadow(
@@ -142,7 +177,10 @@ fun GameHomeScreen(
                     }
                 }
 
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     SwipeableCardCarousel(
                         soundManager = soundManager,
                         modes = modes,
@@ -153,6 +191,7 @@ fun GameHomeScreen(
             }
         }
 
+        // ✅ 黑屏遮罩層（登出時淡入）
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -190,7 +229,9 @@ fun TopInfoBar(
         )
     }
 
-    LaunchedEffect(Unit) { profileViewModel.loadUserProfile() }
+    LaunchedEffect(Unit) {
+        profileViewModel.loadUserProfile()
+    }
 
     // ──────────────── 齒輪旋轉動畫 ────────────────
     val infiniteTransition = rememberInfiniteTransition(label = "gearRotation")
@@ -207,12 +248,19 @@ fun TopInfoBar(
     var clickBoost by remember { mutableStateOf(0f) }
     val boostRotation by animateFloatAsState(
         targetValue = clickBoost,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 300f),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = 300f
+        ),
         finishedListener = { clickBoost = 0f }
     )
     // ─────────────────────────────────────────────
 
-    Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shadowElevation = 2.dp) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -241,28 +289,77 @@ fun TopInfoBar(
                 ) {
                     // 頭像邏輯
                     if (isAnonymous) {
-                        Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White).border(1.5.dp, Color(0xFF673AB7), CircleShape), contentAlignment = Alignment.Center) {
-                            Image(painter = painterResource(R.drawable.user), "訪客頭像", Modifier.size(18.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .border(1.5.dp, Color(0xFF673AB7), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.user),
+                                "訪客頭像",
+                                Modifier.size(18.dp)
+                            )
                         }
                     } else if (userProfile.photoUrl.isNotEmpty()) {
                         val avatarResId = userProfile.photoUrl.toIntOrNull()
                         if (avatarResId != null && defaultAvatars.contains(avatarResId)) {
-                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White).border(1.5.dp, Color(0xFF673AB7), CircleShape)) {
-                                Image(painter = painterResource(avatarResId), "頭像", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .border(1.5.dp, Color(0xFF673AB7), CircleShape)
+                            ) {
+                                Image(
+                                    painter = painterResource(avatarResId),
+                                    "頭像",
+                                    Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
                             }
                         } else {
-                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White).border(1.5.dp, Color(0xFF673AB7), CircleShape), contentAlignment = Alignment.Center) {
-                                Image(painter = painterResource(R.drawable.user), "預設頭像", Modifier.size(18.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .border(1.5.dp, Color(0xFF673AB7), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.user),
+                                    "預設頭像",
+                                    Modifier.size(18.dp)
+                                )
                             }
                         }
                     } else {
-                        Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White).border(1.5.dp, Color(0xFF673AB7), CircleShape), contentAlignment = Alignment.Center) {
-                            Image(painter = painterResource(R.drawable.user), "預設頭像", Modifier.size(18.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .border(1.5.dp, Color(0xFF673AB7), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.user),
+                                "預設頭像",
+                                Modifier.size(18.dp)
+                            )
                         }
                     }
 
                     Spacer(Modifier.width(6.dp))
-                    Text(text = if (isAnonymous) "訪客" else userProfile.displayName, fontSize = 14.sp, color = Color.Black, maxLines = 1)
+                    Text(
+                        text = if (isAnonymous) "訪客" else userProfile.displayName,
+                        fontSize = 14.sp,
+                        color = Color.Black,
+                        maxLines = 1
+                    )
                     Icon(
                         imageVector = Icons.Filled.ArrowDropDown,
                         contentDescription = "下拉",
@@ -271,11 +368,19 @@ fun TopInfoBar(
                     )
                 }
 
-                DropdownMenu(expanded = showDropdownMenu, onDismissRequest = { showDropdownMenu = false }, modifier = Modifier.width(180.dp)) {
+                DropdownMenu(
+                    expanded = showDropdownMenu,
+                    onDismissRequest = { showDropdownMenu = false },
+                    modifier = Modifier.width(180.dp)
+                ) {
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Image(painter = painterResource(R.drawable.user), "個人資料", Modifier.size(20.dp))
+                                Image(
+                                    painter = painterResource(R.drawable.user),
+                                    "個人資料",
+                                    Modifier.size(20.dp)
+                                )
                                 Spacer(Modifier.width(12.dp))
                                 Text("個人資料", fontSize = 14.sp)
                             }
@@ -290,13 +395,18 @@ fun TopInfoBar(
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Image(painter = painterResource(R.drawable.logout), "登出", Modifier.size(20.dp))
+                                Image(
+                                    painter = painterResource(R.drawable.logout),
+                                    "登出",
+                                    Modifier.size(20.dp)
+                                )
                                 Spacer(Modifier.width(12.dp))
                                 Text("登出", fontSize = 14.sp, color = Color(0xFFE57373))
                             }
                         },
                         onClick = {
                             showDropdownMenu = false
+                            // ✅ 觸發登出動畫
                             onLogoutStart()
                         }
                     )
@@ -376,7 +486,9 @@ fun SwipeableCardCarousel(
     ) {
         modes.forEachIndexed { index, mode ->
             val offset = index - currentIndex
-            if (offset != 0) ModeCardSwiper(mode, offset, animatedOffset, false)
+            if (offset != 0) {
+                ModeCardSwiper(mode, offset, animatedOffset, false)
+            }
         }
 
         modes.getOrNull(currentIndex)?.let {
@@ -389,8 +501,16 @@ fun SwipeableCardCarousel(
 // 🃏 卡片
 // =====================================================
 @Composable
-fun ModeCardSwiper(mode: ModeData, offset: Int, dragOffset: Float, isCenter: Boolean) {
-    val scale by animateFloatAsState(if (isCenter) 1f else 0.8f, tween(300))
+fun ModeCardSwiper(
+    mode: ModeData,
+    offset: Int,
+    dragOffset: Float,
+    isCenter: Boolean
+) {
+    val scale by animateFloatAsState(
+        if (isCenter) 1f else 0.8f,
+        tween(300)
+    )
     val translationX = offset * 180f + dragOffset
     val rotationY = (translationX / 25f).coerceIn(-20f, 20f)
     val alpha = if (offset.absoluteValue > 1) 0f else (1f - offset.absoluteValue * 0.5f)
@@ -422,7 +542,9 @@ fun ModeCardSwiper(mode: ModeData, offset: Int, dragOffset: Float, isCenter: Boo
         elevation = CardDefaults.cardElevation(if (isCenter) 16.dp else 4.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(14.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -434,7 +556,10 @@ fun ModeCardSwiper(mode: ModeData, offset: Int, dragOffset: Float, isCenter: Boo
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
-                            listOf(mode.color.copy(0.25f), mode.color.copy(0.08f))
+                            listOf(
+                                mode.color.copy(0.25f),
+                                mode.color.copy(0.08f)
+                            )
                         )
                     )
                     .padding(3.dp),
@@ -456,9 +581,19 @@ fun ModeCardSwiper(mode: ModeData, offset: Int, dragOffset: Float, isCenter: Boo
             }
 
             Spacer(Modifier.height(8.dp))
-            Text(mode.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text(
+                mode.title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
             Spacer(Modifier.height(2.dp))
-            Text(mode.subtitle, fontSize = 11.sp, color = mode.color, textAlign = TextAlign.Center)
+            Text(
+                mode.subtitle,
+                fontSize = 11.sp,
+                color = mode.color,
+                textAlign = TextAlign.Center
+            )
 
             Spacer(Modifier.height(6.dp))
             Text(
@@ -480,7 +615,9 @@ fun ModeCardSwiper(mode: ModeData, offset: Int, dragOffset: Float, isCenter: Boo
                     disabledContainerColor = mode.color.copy(alpha = 0.5f)
                 ),
                 shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth().height(34.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(34.dp)
             ) {
                 Text(
                     "進入遊戲",

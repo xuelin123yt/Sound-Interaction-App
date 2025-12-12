@@ -22,7 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.soundinteractionapp.R
 import com.soundinteractionapp.data.AuthViewModel
 import com.soundinteractionapp.data.ProfileViewModel
-import com.soundinteractionapp.data.RankingViewModel // ★ 新增
+import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.screens.profile.components.*
 import com.soundinteractionapp.screens.profile.dialogs.*
 import com.soundinteractionapp.screens.profile.models.AchievementProvider
@@ -35,9 +35,6 @@ import com.soundinteractionapp.screens.profile.models.AchievementProvider
 @Composable
 fun ProfileScreen(
     onNavigateBack: () -> Unit,
-    onAccountDeleted: () -> Unit = {}, // 這是您原本的
-
-    // ★★★ 新增以下參數以配合 MainActivity ★★★
     onLogout: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
     authViewModel: AuthViewModel = viewModel(),
@@ -138,7 +135,7 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // ★★★ 新增：分數顯示區塊 (僅在非訪客時顯示) ★★★
+            // 分數顯示區塊 (僅在非訪客時顯示)
             if (!isAnonymous) {
                 ScoreBoardSection(rankingViewModel)
                 Spacer(Modifier.height(24.dp))
@@ -152,26 +149,8 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            // ★★★ 新增：登出與刪除帳號按鈕 ★★★
+            // ✅ 只保留刪除帳號按鈕 (移除登出按鈕)
             if (!isAnonymous) {
-                // 登出按鈕
-                OutlinedButton(
-                    onClick = {
-                        authViewModel.signOut()
-                        onLogout()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF673AB7)),
-                    border = BorderStroke(1.dp, Color(0xFF673AB7)),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Logout, null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("登出帳號", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(Modifier.height(12.dp))
-
                 // 刪除帳號按鈕
                 DeleteAccountButton(
                     onClick = { showDeleteDialog = true }
@@ -207,12 +186,12 @@ fun ProfileScreen(
         onDismissAboutDialog = { showAboutDialog = false },
         onDismissPasswordDialog = { showPasswordDialog = false },
         onDismissDeleteDialog = { showDeleteDialog = false },
-        onAccountDeleted = onAccountDeleted,
+        onAccountDeleted = onLogout, // 刪除帳號後執行登出
         context = context
     )
 }
 
-// ★★★ 新增：分數顯示卡片元件 ★★★
+// 分數顯示卡片元件
 @Composable
 fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
     val scores by rankingViewModel.scores.collectAsState()
@@ -227,13 +206,26 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFFFC107))
                 Spacer(Modifier.width(8.dp))
-                Text("歷史最高紀錄", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF333333))
+                Text(
+                    "歷史最高紀錄",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF333333)
+                )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFEEEEEE))
+            Divider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = Color(0xFFEEEEEE)
+            )
 
             // Level 1
-            Text("🎵 關卡 1: 跟著按", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+            Text(
+                "🎵 關卡 1: 跟著按",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
             Spacer(Modifier.height(8.dp))
             ScoreRowItem("簡單", scores.level1Easy, Color(0xFF81C784))
             ScoreRowItem("普通", scores.level1Normal, Color(0xFF4FC3F7))
@@ -242,7 +234,12 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
             Spacer(Modifier.height(12.dp))
 
             // Level 2
-            Text("🐶 關卡 2: 找出動物", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+            Text(
+                "🐶 關卡 2: 找出動物",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
             Spacer(Modifier.height(8.dp))
             ScoreRowItem("最高分", scores.level2Score, Color(0xFF9575CD))
         }
@@ -262,13 +259,13 @@ fun ScoreRowItem(label: String, score: Int, color: Color) {
             "$score 分",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = if(score > 0) color else Color.LightGray
+            color = if (score > 0) color else Color.LightGray
         )
     }
 }
 
 /**
- * 訪客模式警告提示 (修改版，加入點擊去登入)
+ * 訪客模式警告提示
  */
 @Composable
 private fun AnonymousWarning(onLoginClick: () -> Unit) {
@@ -276,7 +273,7 @@ private fun AnonymousWarning(onLoginClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
         shape = RoundedCornerShape(12.dp),
-        onClick = onLoginClick // 點擊可去登入
+        onClick = onLoginClick
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -307,7 +304,7 @@ private fun AnonymousWarning(onLoginClick: () -> Unit) {
 }
 
 /**
- * 刪除帳號按鈕 (保持原樣)
+ * 刪除帳號按鈕
  */
 @Composable
 private fun DeleteAccountButton(
@@ -333,7 +330,7 @@ private fun DeleteAccountButton(
 }
 
 /**
- * 所有對話框 (保持原樣)
+ * 所有對話框
  */
 @Composable
 private fun ProfileDialogs(
@@ -353,9 +350,6 @@ private fun ProfileDialogs(
     onAccountDeleted: () -> Unit,
     context: android.content.Context
 ) {
-    // ... (這裡的程式碼跟您原本的一模一樣，為節省篇幅直接使用您原本的即可)
-    // 為了確保不報錯，我這邊幫您把原本的邏輯複製過來：
-
     if (showAvatarPicker) {
         AvatarSelectorDialog(
             avatars = defaultAvatars,

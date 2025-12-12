@@ -1,4 +1,4 @@
-package com.soundinteractionapp.screens.game.levels
+package com.soundinteractionapp.screens.game.levels.level1
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -26,9 +26,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.utils.GameInputManager
@@ -51,6 +51,10 @@ fun Level1FollowBeatScreen(
 ) {
     val context = LocalContext.current
     val progressManager = remember { GameProgressManager(context) }
+
+    // ✅ 檢查是否為訪客
+    val auth = FirebaseAuth.getInstance()
+    val isGuest = auth.currentUser?.isAnonymous == true
 
     // --- 狀態管理 ---
     var gameState by remember { mutableStateOf(GameState.SELECTION) }
@@ -138,11 +142,14 @@ fun Level1FollowBeatScreen(
         if (gameState == GameState.FINISHED) {
             soundManager.stopMusic()
 
-            // 解鎖條件 (8500 / 14000)
-            if (selectedDifficulty == Difficulty.EASY && score >= 8500) {
-                progressManager.unlockDifficulty(Difficulty.NORMAL.label)
-            } else if (selectedDifficulty == Difficulty.NORMAL && score >= 14000) {
-                progressManager.unlockDifficulty(Difficulty.HARD.label)
+            // ✅ 只有非訪客才處理解鎖邏輯
+            if (!isGuest) {
+                // 解鎖條件 (8500 / 14000)
+                if (selectedDifficulty == Difficulty.EASY && score >= 8500) {
+                    progressManager.unlockDifficulty(Difficulty.NORMAL.label)
+                } else if (selectedDifficulty == Difficulty.NORMAL && score >= 14000) {
+                    progressManager.unlockDifficulty(Difficulty.HARD.label)
+                }
             }
 
             rankingViewModel.onGameFinished(levelId = selectedDifficulty.scoreId, finalScore = score)
@@ -188,7 +195,6 @@ fun Level1FollowBeatScreen(
                     targetNote.isHit = true
                     combo++
 
-                    // ★★★ 修改處：根據難度設定衝刺 Time 門檻 ★★★
                     val rushThreshold = when (selectedDifficulty) {
                         Difficulty.EASY -> 20
                         Difficulty.NORMAL -> 40
@@ -274,19 +280,35 @@ fun Level1FollowBeatScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Surface(
-                    color = Color.Black.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("💡 解鎖條件", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-                        Text("• 簡單 > 8500分 解鎖普通", color = Color(0xFFFFD54F), fontSize = 15.sp)
-                        Text("• 普通 > 14000分 解鎖困難", color = Color(0xFFFFD54F), fontSize = 15.sp)
+                // ✅ 只有非訪客才顯示解鎖條件
+                if (!isGuest) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("💡 解鎖條件", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                            Text("• 簡單 > 8500分 解鎖普通", color = Color(0xFFFFD54F), fontSize = 15.sp)
+                            Text("• 普通 > 14000分 解鎖困難", color = Color(0xFFFFD54F), fontSize = 15.sp)
+                        }
                     }
+                    Spacer(modifier = Modifier.height(32.dp))
+                } else {
+                    // ✅ 訪客顯示提示訊息
+                    Surface(
+                        color = Color(0xFF1E88E5).copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFF1E88E5).copy(alpha = 0.3f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("👤 訪客模式", color = Color(0xFF64B5F6), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                            Text("• 訪客模式無法紀錄分數", color = Color(0xFF90CAF9), fontSize = 15.sp)
+                            Text("• 登入帳號才會保存遊戲分數", color = Color(0xFF90CAF9), fontSize = 15.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
-
-                Spacer(modifier = Modifier.height(32.dp))
 
                 OutlinedButton(onClick = onNavigateBack, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))) {
                     Text("返回主選單", color = Color.White)
@@ -312,7 +334,6 @@ fun Level1FollowBeatScreen(
                 Text("難度: ${selectedDifficulty.label}", color = selectedDifficulty.color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text("分數: $score", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
 
-                // ★★★ 修改處：介面顯示也使用同樣的門檻 ★★★
                 val rushThreshold = when (selectedDifficulty) {
                     Difficulty.EASY -> 20
                     Difficulty.NORMAL -> 40

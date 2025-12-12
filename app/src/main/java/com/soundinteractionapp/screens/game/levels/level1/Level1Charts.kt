@@ -1,4 +1,4 @@
-package com.soundinteractionapp.screens.game.levels
+package com.soundinteractionapp.screens.game.levels.level1
 
 import androidx.compose.ui.graphics.Color
 import com.soundinteractionapp.R

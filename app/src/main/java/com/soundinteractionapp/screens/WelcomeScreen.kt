@@ -28,6 +28,8 @@ import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.AuthState
 import com.soundinteractionapp.data.AuthViewModel
+import com.soundinteractionapp.data.RankingViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun WelcomeScreen(
@@ -38,21 +40,22 @@ fun WelcomeScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    rankingViewModel: RankingViewModel = viewModel()
 ) {
     val authState by authViewModel.authState.collectAsState()
     var showRegisterDialog by remember { mutableStateOf(false) }
     var showLoginDialog by remember { mutableStateOf(false) }
 
-    // ✅ 確保 LoginScreen 顯示時停止 BGM
+    // ✅ 根據登入狀態控制 BGM（移除 reloadScores，Repository 會自動處理）
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Authenticated -> {
-                // 已登入,開始播放 BGM
+                // 已登入，播放 BGM（分數會由 Repository 自動同步）
                 soundManager.playBgm(R.raw.bgm)
             }
             else -> {
-                // ✅ 未登入時完全停止 BGM
+                // 未登入，停止 BGM
                 soundManager.stopBgm()
             }
         }
@@ -60,6 +63,7 @@ fun WelcomeScreen(
 
     when (authState) {
         is AuthState.Loading -> {
+            // 載入中畫面
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -73,12 +77,18 @@ fun WelcomeScreen(
                         modifier = Modifier.size(60.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("載入中...", fontSize = 18.sp, color = Color(0xFF673AB7), fontWeight = FontWeight.Medium)
+                    Text(
+                        "載入中...",
+                        fontSize = 18.sp,
+                        color = Color(0xFF673AB7),
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }
 
         is AuthState.Authenticated -> {
+            // 已登入，顯示遊戲主畫面
             GameHomeScreen(
                 soundManager = soundManager,
                 onNavigateToFreePlay = onNavigateToFreePlay,
@@ -86,15 +96,12 @@ fun WelcomeScreen(
                 onNavigateToGame = onNavigateToGame,
                 onNavigateToProfile = onNavigateToProfile,
                 onNavigateToSettings = onNavigateToSettings,
-                onLogout = {
-                    authViewModel.signOut()
-                    onLogout()
-                }
+                onLogout = onLogout
             )
         }
 
         else -> {
-            // ✅ 這裡呼叫下方定義的 LoginScreen
+            // 未登入，顯示登入畫面
             LoginScreen(
                 onLoginClick = { showLoginDialog = true },
                 onRegisterClick = { showRegisterDialog = true },
@@ -105,6 +112,7 @@ fun WelcomeScreen(
         }
     }
 
+    // 註冊對話框
     if (showRegisterDialog) {
         RegisterDialog(
             onDismiss = {
@@ -115,6 +123,7 @@ fun WelcomeScreen(
         )
     }
 
+    // 登入對話框
     if (showLoginDialog) {
         LoginDialog(
             onDismiss = {
@@ -126,65 +135,9 @@ fun WelcomeScreen(
     }
 }
 
-// ★★★ 這是您缺失的部分：LoginScreen 的定義 ★★★
-@Composable
-fun LoginScreen(
-    onLoginClick: () -> Unit,
-    onRegisterClick: () -> Unit,
-    onGuestLoginClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF673AB7)),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier.padding(32.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(32.dp)
-                    .width(IntrinsicSize.Max),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("歡迎來到", fontSize = 18.sp, color = Color.Gray)
-                Text("樂之聲", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color(0xFF673AB7))
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Button(
-                    onClick = onLoginClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7))
-                ) {
-                    Text("登入帳號")
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedButton(
-                    onClick = onRegisterClick,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("註冊新帳號")
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(16.dp))
-
-                TextButton(onClick = onGuestLoginClick) {
-                    Text("以訪客身份試玩 >", color = Color.Gray)
-                }
-            }
-        }
-    }
-}
-
+// =====================================================
+// 📝 註冊對話框
+// =====================================================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterDialog(
@@ -215,31 +168,53 @@ fun RegisterDialog(
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("註冊新帳號", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF673AB7))
+                Text(
+                    "註冊新帳號",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF673AB7)
+                )
                 Spacer(modifier = Modifier.height(20.dp))
 
+                // 帳號輸入框
                 OutlinedTextField(
                     value = account,
                     onValueChange = { account = it; errorMessage = null },
                     label = { Text("帳號(英數混合,至少4字元)") },
-                    leadingIcon = { Icon(Icons.Default.AccountCircle, null, tint = Color(0xFF673AB7)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            null,
+                            tint = Color(0xFF673AB7)
+                        )
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // 密碼輸入框
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it; errorMessage = null },
                     label = { Text("密碼(至少6個字元)") },
-                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7)) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7))
+                    },
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
+                            Icon(
+                                if (passwordVisible) Icons.Default.Visibility
+                                else Icons.Default.VisibilityOff,
+                                null
+                            )
                         }
                     },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -247,22 +222,33 @@ fun RegisterDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // 確認密碼輸入框
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it; errorMessage = null },
                     label = { Text("確認密碼") },
-                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7)) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7))
+                    },
                     trailingIcon = {
                         IconButton(onClick = { confirmVisible = !confirmVisible }) {
-                            Icon(if (confirmVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
+                            Icon(
+                                if (confirmVisible) Icons.Default.Visibility
+                                else Icons.Default.VisibilityOff,
+                                null
+                            )
                         }
                     },
-                    visualTransformation = if (confirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (confirmVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // 錯誤訊息顯示區域
                 Box(modifier = Modifier.height(40.dp)) {
                     errorMessage?.let {
                         Text(
@@ -279,11 +265,16 @@ fun RegisterDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // 按鈕區域
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f), enabled = !isLoading) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading
+                    ) {
                         Text("取消")
                     }
                     Button(
@@ -302,18 +293,27 @@ fun RegisterDialog(
                                     errorMessage = null
                                     authViewModel.signUp(account, password) { success, err ->
                                         isLoading = false
-                                        if (!success) errorMessage = err ?: "註冊失敗,請稍後再試"
-                                        else onDismiss()
+                                        if (!success) {
+                                            errorMessage = err ?: "註冊失敗,請稍後再試"
+                                        } else {
+                                            onDismiss()
+                                        }
                                     }
                                 }
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF673AB7)
+                        ),
                         enabled = !isLoading
                     ) {
                         if (isLoading) {
-                            CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
                         } else {
                             Text("註冊", fontWeight = FontWeight.Bold)
                         }
@@ -324,6 +324,9 @@ fun RegisterDialog(
     }
 }
 
+// =====================================================
+// 🔐 登入對話框
+// =====================================================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginDialog(
@@ -379,37 +382,66 @@ fun LoginDialog(
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("登入帳號", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF673AB7))
+                Text(
+                    "登入帳號",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF673AB7)
+                )
                 Spacer(modifier = Modifier.height(20.dp))
 
+                // 帳號輸入框
                 OutlinedTextField(
                     value = account,
                     onValueChange = { account = it; errorMessage = null },
                     label = { Text("帳號") },
-                    leadingIcon = { Icon(Icons.Default.AccountCircle, null, tint = Color(0xFF673AB7)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            null,
+                            tint = Color(0xFF673AB7)
+                        )
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // 密碼輸入框
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it; errorMessage = null },
                     label = { Text("密碼") },
-                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7)) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7))
+                    },
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null, tint = Color(0xFF673AB7))
+                            Icon(
+                                if (passwordVisible) Icons.Default.Visibility
+                                else Icons.Default.VisibilityOff,
+                                null,
+                                tint = Color(0xFF673AB7)
+                            )
                         }
                     },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { if (!isLoading) loginAction() }),
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { if (!isLoading) loginAction() }
+                    ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // 錯誤訊息顯示區域
                 Box(modifier = Modifier.height(40.dp)) {
                     errorMessage?.let {
                         Text(
@@ -426,21 +458,32 @@ fun LoginDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // 按鈕區域
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f), enabled = !isLoading) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading
+                    ) {
                         Text("取消")
                     }
                     Button(
                         onClick = loginAction,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF673AB7)
+                        ),
                         enabled = !isLoading
                     ) {
                         if (isLoading) {
-                            CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
                         } else {
                             Text("登入", fontWeight = FontWeight.Bold)
                         }
