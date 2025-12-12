@@ -9,7 +9,7 @@ import com.soundinteractionapp.R
 data class Note(val id: Long, val targetTime: Long, var isHit: Boolean = false)
 
 // ----------------------------------------------------------------------
-// 2. 難度設定 (簡單與普通互換)
+// 2. 難度設定
 // ----------------------------------------------------------------------
 enum class Difficulty(
     val label: String,
@@ -17,24 +17,25 @@ enum class Difficulty(
     val speed: Float,
     val scoreId: Int,
     val musicResId: Int,
-    val duration: Long, // 歌曲總長度 (毫秒)
+    val duration: Long,
+    val maxScore: Int, // ★ 已更新為含衝刺加成的最高分
     val chartData: List<Note>
 ) {
-    // ★ 簡單 (現在是：Canon - 卡農)
-    EASY("簡單", Color(0xFF81C784), 0.35f, 11, R.raw.canon, 96000L, LEVEL1_NORMAL_CHART),
+    // ★ 簡單 (Canon) - 總分 12,950
+    EASY("簡單", Color(0xFF81C784), 0.35f, 11, R.raw.canon, 96000L, 12950, LEVEL1_NORMAL_CHART),
 
-    // ★ 普通 (現在是：Fur Elise - 給愛麗絲)
-    NORMAL("普通", Color(0xFF4FC3F7), 0.5f, 12, R.raw.fur_elise, 76000L, LEVEL1_EASY_CHART),
+    // ★ 普通 (Fur Elise) - 總分 23,450
+    NORMAL("普通", Color(0xFF4FC3F7), 0.5f, 12, R.raw.fur_elise, 76000L, 23450, LEVEL1_EASY_CHART),
 
-    // ★ 困難 (Rondo Alla Turca - 土耳其進行曲)
-    HARD("困難", Color(0xFFFF8A65), 0.7f, 13, R.raw.rondo_alla_turca, 56000L, LEVEL1_HARD_CHART)
+    // ★ 困難 (Rondo Alla Turca) - 總分 34,400
+    HARD("困難", Color(0xFFFF8A65), 0.7f, 13, R.raw.rondo_alla_turca, 56000L, 34400, LEVEL1_HARD_CHART)
 }
 
 // ----------------------------------------------------------------------
-// 3. 譜面資料庫
+// 3. 譜面資料庫 (維持不變)
 // ----------------------------------------------------------------------
 
-// 給愛麗絲 (Fur Elise) 的數據 - 這裡變數名稱維持原意，方便辨識
+// 給愛麗絲 (Fur Elise) - 用於普通模式
 val LEVEL1_EASY_CHART = listOf(
     Note(1, 317), Note(2, 680), Note(3, 1179), Note(4, 1497), Note(5, 1814),
     Note(6, 2086), Note(7, 2358), Note(8, 2676), Note(9, 2948), Note(10, 4036),
@@ -72,7 +73,7 @@ val LEVEL1_EASY_CHART = listOf(
     Note(166, 74694)
 )
 
-// 卡農 (Canon) 的數據
+// 卡農 (Canon) - 用於簡單模式
 val LEVEL1_NORMAL_CHART = listOf(
     Note(1, 2449), Note(2, 4444), Note(3, 6667), Note(4, 8844), Note(5, 11020),
     Note(6, 13333), Note(7, 15556), Note(8, 17732), Note(9, 19955), Note(10, 22268),
@@ -96,7 +97,7 @@ val LEVEL1_NORMAL_CHART = listOf(
     Note(96, 94966)
 )
 
-// ★ 困難模式 (Rondo Alla Turca) - 更新為您最後提供的 1.7秒 開始的版本
+// 土耳其進行曲 (Rondo Alla Turca) - 用於困難模式
 val LEVEL1_HARD_CHART = listOf(
     Note(1, 1723), Note(2, 1950), Note(3, 2313), Note(4, 2494), Note(5, 2630),
     Note(6, 2766), Note(7, 3129), Note(8, 3265), Note(9, 3447), Note(10, 3628),
