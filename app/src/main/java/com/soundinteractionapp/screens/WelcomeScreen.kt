@@ -94,7 +94,7 @@ fun WelcomeScreen(
         }
 
         else -> {
-            // ✅ LoginScreen 不播放 BGM
+            // ✅ 這裡呼叫下方定義的 LoginScreen
             LoginScreen(
                 onLoginClick = { showLoginDialog = true },
                 onRegisterClick = { showRegisterDialog = true },
@@ -123,6 +123,65 @@ fun WelcomeScreen(
             },
             authViewModel = authViewModel
         )
+    }
+}
+
+// ★★★ 這是您缺失的部分：LoginScreen 的定義 ★★★
+@Composable
+fun LoginScreen(
+    onLoginClick: () -> Unit,
+    onRegisterClick: () -> Unit,
+    onGuestLoginClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF673AB7)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier.padding(32.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(32.dp)
+                    .width(IntrinsicSize.Max),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("歡迎來到", fontSize = 18.sp, color = Color.Gray)
+                Text("樂之聲", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color(0xFF673AB7))
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Button(
+                    onClick = onLoginClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7))
+                ) {
+                    Text("登入帳號")
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = onRegisterClick,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("註冊新帳號")
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(onClick = onGuestLoginClick) {
+                    Text("以訪客身份試玩 >", color = Color.Gray)
+                }
+            }
+        }
     }
 }
 
