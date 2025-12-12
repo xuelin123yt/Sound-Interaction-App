@@ -37,6 +37,7 @@ import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.data.AuthViewModel
 import com.soundinteractionapp.data.ProfileViewModel
 import com.soundinteractionapp.screens.game.levels.level1.Level1FollowBeatScreen
+import com.soundinteractionapp.screens.settings.SettingScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -151,7 +152,11 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Screen.Settings.route) {
-                        SettingScreen(soundManager, { navController.popBackStack() })
+                        SettingScreen(
+                            soundManager = soundManager,
+                            onNavigateBack = { navController.popBackStack() },
+                            isLoggedIn = authViewModel.isLoggedIn() && !authViewModel.isAnonymous()
+                        )
                     }
 
                     composable(Screen.FreePlay.route) {
