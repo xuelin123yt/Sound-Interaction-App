@@ -102,7 +102,8 @@ fun OtherSection(
         InfoCard(
             title = "版本資訊",
             icon = Icons.Default.Info,
-            iconColor = Color(0xFF4CAF50)
+            iconColor = Color(0xFF4CAF50),
+            showHistoryButton = true  // 啟用歷史按鈕
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),

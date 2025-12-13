@@ -1,4 +1,4 @@
-package com.soundinteractionapp.utils
+package com.soundinteractionapp
 
 import android.content.Context
 import android.content.SharedPreferences

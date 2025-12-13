@@ -32,7 +32,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.utils.GameInputManager
-import com.soundinteractionapp.utils.GameProgressManager
+import com.soundinteractionapp.GameProgressManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive

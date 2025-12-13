@@ -2,6 +2,7 @@ import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -30,6 +31,16 @@ fun getBuildDate(): String {
     return dateFormat.format(Date())
 }
 
+// 讀取 local.properties 中的 GitHub Token
+fun getGitHubToken(): String {
+    val properties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        properties.load(localPropertiesFile.inputStream())
+    }
+    return properties.getProperty("GITHUB_TOKEN", "")
+}
+
 android {
     namespace = "com.soundinteractionapp"
     compileSdk = 36
@@ -46,6 +57,7 @@ android {
         // ✅ 生成 BuildConfig 欄位
         buildConfigField("String", "COMMIT_HASH", "\"${getGitCommitHash()}\"")
         buildConfigField("String", "BUILD_DATE", "\"${getBuildDate()}\"")
+        buildConfigField("String", "GITHUB_TOKEN", "\"${getGitHubToken()}\"")
 
         externalNativeBuild {
             cmake {
