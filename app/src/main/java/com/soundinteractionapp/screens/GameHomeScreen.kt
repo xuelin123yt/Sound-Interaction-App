@@ -1,8 +1,5 @@
 package com.soundinteractionapp.screens
 
-import android.content.Context
-import android.media.AudioAttributes
-import android.media.SoundPool
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,7 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -38,8 +34,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.AuthViewModel
+import com.soundinteractionapp.data.LeaderboardViewModel // ✅ 確保有 Import
 import com.soundinteractionapp.data.ProfileViewModel
-import kotlinx.coroutines.launch
+import com.soundinteractionapp.screens.components.LeaderboardDialog // ✅ 確保有 Import
 import kotlin.math.absoluteValue
 
 // =====================================================
@@ -54,49 +51,66 @@ fun GameHomeScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    leaderboardViewModel: LeaderboardViewModel = viewModel() // ✅ 注入排行榜 ViewModel
 ) {
     // ✅ 登出狀態控制
     var isLoggingOut by remember { mutableStateOf(false) }
+
+    // ✅ 排行榜顯示狀態控制
+    var showLeaderboard by remember { mutableStateOf(false) }
 
     // ✅ 黑屏動畫（700ms 淡入）
     val blackAlpha by animateFloatAsState(
         targetValue = if (isLoggingOut) 1f else 0f,
         animationSpec = tween(700),
         finishedListener = {
-            // ✅ 動畫完成後才執行登出導航
             if (isLoggingOut) {
                 onLogout()
             }
         }
     )
 
-    var currentIndex by remember { mutableStateOf(1) }
+    var currentIndex by remember { mutableStateOf(1) } // 預設顯示第二張卡片
 
+    // ✅ 定義卡片資料 (新增第 4 個：排行榜)
     val modes = listOf(
         ModeData(
-            "自由探索",
-            "模式一",
-            "自由觸碰螢幕,探索各種聲音與互動",
-            R.drawable.music_01,
-            Color(0xFF8C7AE6),
-            onNavigateToFreePlay
+            title = "自由探索",
+            subtitle = "模式一",
+            description = "自由觸碰螢幕,探索各種聲音與互動",
+            iconResId = R.drawable.music_01,
+            color = Color(0xFF8C7AE6),
+            onClick = onNavigateToFreePlay
         ),
         ModeData(
-            "放鬆時光",
-            "模式二",
-            "聆聽舒緩音樂,放鬆身心享受時光",
-            R.drawable.music_02,
-            Color(0xFF4FC3F7),
-            onNavigateToRelax
+            title = "放鬆時光",
+            subtitle = "模式二",
+            description = "聆聽舒緩音樂,放鬆身心享受時光",
+            iconResId = R.drawable.music_02,
+            color = Color(0xFF4FC3F7),
+            onClick = onNavigateToRelax
         ),
         ModeData(
-            "音樂遊戲",
-            "模式三",
-            "跟著節奏玩遊戲,訓練反應能力",
-            R.drawable.music_03,
-            Color(0xFFFF9800),
-            onNavigateToGame
+            title = "音樂遊戲",
+            subtitle = "模式三",
+            description = "跟著節奏玩遊戲,訓練反應能力",
+            iconResId = R.drawable.music_03,
+            color = Color(0xFFFF9800),
+            onClick = onNavigateToGame
+        ),
+        // ✅ 新增：排行榜卡片
+        ModeData(
+            title = "榮譽榜",
+            subtitle = "排行榜",
+            description = "查看大家的分數排行，挑戰最高榮譽",
+            iconResId = R.drawable.music_01, // 如果你有獎盃圖示，請換成 R.drawable.trophy
+            color = Color(0xFFFFD700),   // 金色
+            buttonText = "查看排行",      // ✅ 自訂按鈕文字
+            onClick = {
+                soundManager.playSFX("options2")
+                showLeaderboard = true // ✅ 點擊卡片時，打開排行榜 Dialog
+            }
         )
     )
 
@@ -110,10 +124,9 @@ fun GameHomeScreen(
                 soundManager = soundManager,
                 onNavigateToProfile = onNavigateToProfile,
                 onNavigateToSettings = onNavigateToSettings,
-                // ✅ 點擊登出時觸發黑屏動畫
                 onLogoutStart = {
                     soundManager.playSFX("cancel")
-                    soundManager.stopBgm() // ✅ 立即停止 BGM
+                    soundManager.stopBgm()
                     isLoggingOut = true
                 },
                 authViewModel = authViewModel
@@ -125,6 +138,7 @@ fun GameHomeScreen(
                     .padding(horizontal = 60.dp, vertical = 32.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 左側 Logo 區塊
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -177,6 +191,7 @@ fun GameHomeScreen(
                     }
                 }
 
+                // 右側卡片輪播區塊
                 Box(
                     modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.Center
@@ -198,11 +213,19 @@ fun GameHomeScreen(
                 .graphicsLayer { alpha = blackAlpha }
                 .background(Color.Black)
         )
+
+        // ✅ 排行榜 Dialog
+        if (showLeaderboard) {
+            LeaderboardDialog(
+                viewModel = leaderboardViewModel,
+                onDismiss = { showLeaderboard = false }
+            )
+        }
     }
 }
 
 // =====================================================
-// 🔝 上方資訊欄（顯示真實用戶名和頭像）
+// 🔝 上方資訊欄
 // =====================================================
 @Composable
 fun TopInfoBar(
@@ -233,7 +256,7 @@ fun TopInfoBar(
         profileViewModel.loadUserProfile()
     }
 
-    // ──────────────── 齒輪旋轉動畫 ────────────────
+    // 齒輪旋轉動畫
     val infiniteTransition = rememberInfiniteTransition(label = "gearRotation")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -254,7 +277,6 @@ fun TopInfoBar(
         ),
         finishedListener = { clickBoost = 0f }
     )
-    // ─────────────────────────────────────────────
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -287,70 +309,27 @@ fun TopInfoBar(
                         }
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    // 頭像邏輯
-                    if (isAnonymous) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color.White)
-                                .border(1.5.dp, Color(0xFF673AB7), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.user),
-                                "訪客頭像",
-                                Modifier.size(18.dp)
-                            )
-                        }
-                    } else if (userProfile.photoUrl.isNotEmpty()) {
-                        val avatarResId = userProfile.photoUrl.toIntOrNull()
-                        if (avatarResId != null && defaultAvatars.contains(avatarResId)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White)
-                                    .border(1.5.dp, Color(0xFF673AB7), CircleShape)
-                            ) {
-                                Image(
-                                    painter = painterResource(avatarResId),
-                                    "頭像",
-                                    Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White)
-                                    .border(1.5.dp, Color(0xFF673AB7), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Image(
-                                    painter = painterResource(R.drawable.user),
-                                    "預設頭像",
-                                    Modifier.size(18.dp)
-                                )
-                            }
-                        }
+                    val avatarResId = userProfile.photoUrl.toIntOrNull()
+                    val finalAvatar = if (avatarResId != null && defaultAvatars.contains(avatarResId)) {
+                        avatarResId
                     } else {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color.White)
-                                .border(1.5.dp, Color(0xFF673AB7), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.user),
-                                "預設頭像",
-                                Modifier.size(18.dp)
-                            )
-                        }
+                        R.drawable.user
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(1.5.dp, Color(0xFF673AB7), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(finalAvatar),
+                            contentDescription = "頭像",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
                     }
 
                     Spacer(Modifier.width(6.dp))
@@ -406,7 +385,6 @@ fun TopInfoBar(
                         },
                         onClick = {
                             showDropdownMenu = false
-                            // ✅ 觸發登出動畫
                             onLogoutStart()
                         }
                     )
@@ -415,15 +393,13 @@ fun TopInfoBar(
 
             Spacer(Modifier.width(12.dp))
 
-            // ✅ 設定按鈕（齒輪圖示）
+            // 設定按鈕（齒輪圖示）
             Image(
                 painter = painterResource(id = R.drawable.setting),
                 contentDescription = "設定",
                 modifier = Modifier
                     .size(28.dp)
-                    .graphicsLayer {
-                        rotationZ = rotation + boostRotation
-                    }
+                    .graphicsLayer { rotationZ = rotation + boostRotation }
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
@@ -507,10 +483,7 @@ fun ModeCardSwiper(
     dragOffset: Float,
     isCenter: Boolean
 ) {
-    val scale by animateFloatAsState(
-        if (isCenter) 1f else 0.8f,
-        tween(300)
-    )
+    val scale by animateFloatAsState(if (isCenter) 1f else 0.8f, tween(300))
     val translationX = offset * 180f + dragOffset
     val rotationY = (translationX / 25f).coerceIn(-20f, 20f)
     val alpha = if (offset.absoluteValue > 1) 0f else (1f - offset.absoluteValue * 0.5f)
@@ -550,16 +523,11 @@ fun ModeCardSwiper(
             Box(
                 modifier = Modifier
                     .size(70.dp)
-                    .graphicsLayer {
-                        translationY = iconBounce
-                    }
+                    .graphicsLayer { translationY = iconBounce }
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
-                            listOf(
-                                mode.color.copy(0.25f),
-                                mode.color.copy(0.08f)
-                            )
+                            listOf(mode.color.copy(0.25f), mode.color.copy(0.08f))
                         )
                     )
                     .padding(3.dp),
@@ -581,19 +549,9 @@ fun ModeCardSwiper(
             }
 
             Spacer(Modifier.height(8.dp))
-            Text(
-                mode.title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
+            Text(mode.title, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Spacer(Modifier.height(2.dp))
-            Text(
-                mode.subtitle,
-                fontSize = 11.sp,
-                color = mode.color,
-                textAlign = TextAlign.Center
-            )
+            Text(mode.subtitle, fontSize = 11.sp, color = mode.color, textAlign = TextAlign.Center)
 
             Spacer(Modifier.height(6.dp))
             Text(
@@ -615,12 +573,11 @@ fun ModeCardSwiper(
                     disabledContainerColor = mode.color.copy(alpha = 0.5f)
                 ),
                 shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(34.dp)
+                modifier = Modifier.fillMaxWidth().height(34.dp)
             ) {
+                // ✅ 使用 buttonText 顯示不同文字
                 Text(
-                    "進入遊戲",
+                    mode.buttonText,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (isCenter) Color.White else Color.White.copy(alpha = 0.6f)
@@ -631,11 +588,14 @@ fun ModeCardSwiper(
 }
 
 // =====================================================
+// ✅ 新增 buttonText 參數
+// =====================================================
 data class ModeData(
     val title: String,
     val subtitle: String,
     val description: String,
     val iconResId: Int,
     val color: Color,
+    val buttonText: String = "進入遊戲", // 預設為進入遊戲
     val onClick: () -> Unit
 )

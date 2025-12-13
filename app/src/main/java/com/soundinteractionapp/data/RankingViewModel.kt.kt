@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
-class RankingViewModel(private val repository: RankingRepository = RankingRepository()) : ViewModel() {
+class RankingViewModel(private val repository: RankingRepository = RankingRepository()) :
+    ViewModel() {
 
     // ✅ 直接使用 Repository 的 scores，不需要額外的邏輯
     val scores: StateFlow<ScoreEntry> = repository.scores
