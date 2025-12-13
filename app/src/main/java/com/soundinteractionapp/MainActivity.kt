@@ -199,7 +199,10 @@ class MainActivity : ComponentActivity() {
                         Level2FindAnimalScreen({ navController.popBackStack() })
                     }
                     composable(Screen.GameLevel3.route) {
-                        Level3PitchScreen({ navController.popBackStack() })
+                        Level3PitchScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            rankingViewModel = rankingViewModel // <--- 關鍵修改：傳入共享實例
+                        )
                     }
                     composable(Screen.GameLevel4.route) {
                         Level4CompositionScreen({ navController.popBackStack() })

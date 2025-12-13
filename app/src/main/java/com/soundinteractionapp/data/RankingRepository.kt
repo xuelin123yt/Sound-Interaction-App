@@ -28,24 +28,20 @@ class RankingRepository {
 
             when {
                 currentUser == null -> {
-                    // 用戶登出
                     Log.d("RankingRepo", "用戶登出")
                     clearScoresAndStopListening()
                 }
                 currentUser.isAnonymous -> {
-                    // 訪客登入
                     Log.d("RankingRepo", "訪客登入")
                     clearScoresAndStopListening()
                 }
                 else -> {
-                    // 正式用戶登入
                     Log.d("RankingRepo", "正式用戶登入: ${currentUser.uid}")
                     listenToUserScores(currentUser.uid)
                 }
             }
         }
 
-        // 初始化時檢查當前狀態
         val currentUser = auth.currentUser
         when {
             currentUser == null || currentUser.isAnonymous -> {
@@ -57,27 +53,15 @@ class RankingRepository {
         }
     }
 
-    /**
-     * ✅ 清空分數並停止監聽
-     */
     private fun clearScoresAndStopListening() {
-        // 停止 Firestore 監聽
         scoreListener?.remove()
         scoreListener = null
-
-        // ✅ 清空本地分數（這是關鍵！）
         _scores.value = ScoreEntry()
         Log.d("RankingRepo", "分數已清空，監聽已停止")
     }
 
-    /**
-     * 監聽指定用戶的分數變化
-     */
     private fun listenToUserScores(userId: String) {
-        // 先停止之前的監聽
         scoreListener?.remove()
-
-        // 監聽路徑: user_scores/{userId}
         scoreListener = db.collection("user_scores").document(userId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -86,14 +70,12 @@ class RankingRepository {
                 }
 
                 if (snapshot != null && snapshot.exists()) {
-                    // 將雲端資料轉成我們的 ScoreEntry
                     val entry = snapshot.toObject(ScoreEntry::class.java)
                     if (entry != null) {
                         _scores.value = entry
                         Log.d("RankingRepo", "分數已同步: $entry")
                     }
                 } else {
-                    // 文件不存在，使用空分數
                     _scores.value = ScoreEntry()
                     Log.d("RankingRepo", "用戶無分數記錄，使用空分數")
                 }
@@ -101,15 +83,15 @@ class RankingRepository {
     }
 
     /**
-     * 更新最高分 (會比較舊分數，只有更高時才上傳)
-     * @param scoreId 對應 Difficulty Enum 中的 ID (11, 12, 13, 2)
+     * 更新最高分
+     * @param scoreId 11=L1易, 12=L1中, 13=L1難, 2=L2, 3=L3 (新增)
      */
     fun updateHighScore(scoreId: Int, newScore: Int) {
         val current = _scores.value
         var isUpdated = false
         var updatedEntry = current
 
-        // 1. 判斷是否打破紀錄 (根據 scoreId 判斷是哪個難度)
+        // 1. 判斷是否打破紀錄
         when (scoreId) {
             11 -> { // Level 1 簡單
                 if (newScore > current.level1Easy) {
@@ -135,11 +117,18 @@ class RankingRepository {
                     isUpdated = true
                 }
             }
+            // ✅ 新增：Level 3 邏輯
+            3 -> {
+                if (newScore > current.level3Score) {
+                    updatedEntry = current.copy(level3Score = newScore)
+                    isUpdated = true
+                }
+            }
         }
 
         // 2. 如果打破紀錄，更新本地並檢查是否需要上傳雲端
         if (isUpdated) {
-            _scores.value = updatedEntry // 先更新本地，讓畫面變快 (訪客也會看到變化)
+            _scores.value = updatedEntry // 先更新本地
 
             val currentUser = auth.currentUser
 
@@ -153,13 +142,10 @@ class RankingRepository {
         }
     }
 
-    // 上傳到 Firebase
     private fun uploadToCloud(entry: ScoreEntry) {
-        val userId = auth.currentUser?.uid ?: return // 沒登入就不上傳
-
+        val userId = auth.currentUser?.uid ?: return
         repoScope.launch {
             try {
-                // 使用 merge，避免覆蓋掉未來可能新增的其他欄位
                 db.collection("user_scores").document(userId)
                     .set(entry, SetOptions.merge())
                     .await()

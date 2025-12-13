@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.soundinteractionapp.data.RankingViewModel
 
 @Composable
@@ -29,6 +28,8 @@ fun RankingDialogContent(onClose: () -> Unit, rankingViewModel: RankingViewModel
             }
             Divider()
             LazyColumn(modifier = Modifier.weight(1f).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                // 關卡 1
                 item { Text("🎵 關卡 1: 跟著按", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.DarkGray) }
                 item { ScoreRow("簡單 (Easy)", scores.level1Easy, Color(0xFF81C784)) }
                 item { ScoreRow("普通 (Normal)", scores.level1Normal, Color(0xFF4FC3F7)) }
@@ -39,9 +40,18 @@ fun RankingDialogContent(onClose: () -> Unit, rankingViewModel: RankingViewModel
                         Text("${scores.level1Total}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
+
                 item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+                // 關卡 2
                 item { Text("🐶 關卡 2: 找出動物", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.DarkGray) }
                 item { ScoreRow("最高分", scores.level2Score, Color.Gray) }
+
+                item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
+
+                // ✅ 新增：關卡 3
+                item { Text("🎤 關卡 3: 音高控制", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.DarkGray) }
+                item { ScoreRow("最高分", scores.level3Score, Color(0xFFE91E63)) }
             }
             Button(onClick = onClose, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("關閉") }
         }

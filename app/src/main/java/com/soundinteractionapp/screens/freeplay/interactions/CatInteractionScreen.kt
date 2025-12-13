@@ -1,5 +1,7 @@
 package com.soundinteractionapp.screens.freeplay.interactions
 
+import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -7,212 +9,287 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import kotlinx.coroutines.delay
-
-// 確保 R 類別可以被識別
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
+import kotlinx.coroutines.delay
+import kotlin.random.Random
+
+// 資料類別
+data class CatAsset(
+    val frames: List<Int>,
+    val soundRes: Int,
+    val name: String
+)
 
 /**
- * 貓咪互動畫面，包含單一可點擊、會單向連續移動且具有連續動畫的貓咪。
- * 目標：因果理解訓練 (點擊 -> 聲音/動畫)。
+ * 專門用來播放背景影片的元件
+ * 使用 ExoPlayer + AndroidView
  */
+@OptIn(UnstableApi::class) // 標註使用 Media3 的 UI API
+@Composable
+fun VideoBackground(videoResId: Int) {
+    val context = LocalContext.current
+
+    // 初始化 ExoPlayer
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            // 建立影片來源 URI (res/raw 資料夾)
+            val videoUri = Uri.parse("android.resource://${context.packageName}/$videoResId")
+            setMediaItem(MediaItem.fromUri(videoUri))
+
+            // 設定循環播放與自動播放
+            repeatMode = Player.REPEAT_MODE_ONE
+            playWhenReady = true
+            prepare()
+
+            // 設定靜音 (避免背景聲音干擾貓叫聲)
+            volume = 0f
+        }
+    }
+
+    // 當 Composable 被銷毀時，釋放播放器資源
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    // 嵌入原生 View
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = false // 隱藏播放控制條
+                // 設定縮放模式為 ZOOM (類似 ContentScale.Crop，填滿畫面不留黑邊)
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
 @Composable
 fun CatInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
 
-    // 隨機貓叫聲資源列表 (目前只使用一個檔案: R.raw.cat_meow)
-    val catSoundResources = remember {
+    // --- [調整區：這裡控制大小與位置] ---
+
+    // 1. 位置設定
+    val farCatTopOffset = 180.dp      // 遠處：距離頂部
+    val nearCatBottomOffset = -10.dp   // 近處：距離底部 (貼底)
+
+    // 2. 大小設定 (製造透視感：近大遠小)
+    val farCatSize = 120.dp
+    val nearCatSize = 200.dp
+
+    // ------------------
+
+    // 貓咪資料庫
+    val allCats = remember {
         listOf(
-            R.raw.cat_meow
-        )
-    }
-
-    // 貓咪動畫幀資源列表 (請確保這些檔案存在於 res/drawable 目錄中: cat1_1.png, cat1_2.png, ...)
-    val catFrames = remember {
-        listOf(
-            R.drawable.cat1_1, // <-- 更新為 cat1_X 命名
-            R.drawable.cat1_2,
-            R.drawable.cat1_3,
-            R.drawable.cat1_4
-        )
-    }
-
-    // 背景圖片資源 ID
-    // TODO: 請在 res/drawable 放入您的背景圖片 cat_background.jpg 或 .png
-    val backgroundResId = R.drawable.catbackground
-
-    // 使用 Box 進行堆疊：背景 -> 貓咪 -> 返回按鈕
-    Box(modifier = Modifier.fillMaxSize()) {
-
-        // 1. 背景圖片 (放在最底層)
-        Image(
-            painter = painterResource(id = backgroundResId),
-            contentDescription = "Background image for cat interaction",
-            contentScale = ContentScale.Crop, // 確保圖片填滿整個橫向螢幕
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // 2. 互動區：單一貓咪
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 80.dp) // 避免與返回按鈕重疊
-        ) {
-            MovingCat(
-                catFrames = catFrames, // 傳遞動畫幀
-                soundManager = soundManager,
-                catSoundResources = catSoundResources
+            // --- 貓咪 1 (橘貓) ---
+            CatAsset(
+                frames = listOf(R.drawable.cat1_2, R.drawable.cat1_3, R.drawable.cat1_4),
+                soundRes = R.raw.cat_meow,
+                name = "Orange Cat"
+            ),
+            // --- 貓咪 2 (灰貓) ---
+            CatAsset(
+                frames = listOf(R.drawable.cat2_1, R.drawable.cat2_2, R.drawable.cat2_3),
+                soundRes = R.raw.meow2,
+                name = "Grey Cat"
+            ),
+            // --- 貓咪 3 (白貓) ---
+            CatAsset(
+                frames = listOf(R.drawable.cat3_1, R.drawable.cat3_2, R.drawable.cat3_3),
+                soundRes = R.raw.meow3,
+                name = "White Cat"
             )
-        }
+        )
+    }
 
-        // 3. 頂部返回按鈕 (放在最上層)
+    // --- 狀態管理：確保兩隻貓不同 ---
+    var nearCatIndex by remember { mutableIntStateOf(0) }
+    var farCatIndex by remember { mutableIntStateOf(1) }
+
+    // 換貓邏輯
+    fun getNextUniqueCat(currentIndex: Int, otherIndex: Int): Int {
+        var next = (currentIndex + 1) % allCats.size
+        if (next == otherIndex) {
+            next = (next + 1) % allCats.size
+        }
+        return next
+    }
+
+    // 這裡指向你的影片檔案 (res/raw/catbackground.mp4)
+    val backgroundResId = R.raw.catbackground
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val screenHeightPx = constraints.maxHeight.toFloat()
+
+        // 計算位置 (px)
+        val farYPx = with(density) { farCatTopOffset.toPx().toInt() }
+
+        val nearCatSizePx = with(density) { nearCatSize.toPx() }
+        val bottomPaddingPx = with(density) { nearCatBottomOffset.toPx() }
+        val nearYPx = (screenHeightPx - nearCatSizePx - bottomPaddingPx).toInt()
+
+        // 1. 背景 (改用 VideoBackground)
+        VideoBackground(videoResId = backgroundResId)
+
+        // 2. 互動區
+
+        // --- (A) 遠處的貓 (比較小) ---
+        RotatingCat(
+            catData = allCats[farCatIndex],
+            soundManager = soundManager,
+            yOffsetPx = farYPx,
+            catDisplaySize = farCatSize,
+            startFromRight = true,
+            moveDuration = 6000,
+            onCycleComplete = {
+                farCatIndex = getNextUniqueCat(farCatIndex, nearCatIndex)
+            }
+        )
+
+        // --- (B) 近處的貓 (比較大) ---
+        RotatingCat(
+            catData = allCats[nearCatIndex],
+            soundManager = soundManager,
+            yOffsetPx = nearYPx,
+            catDisplaySize = nearCatSize,
+            startFromRight = false,
+            moveDuration = 4000,
+            onCycleComplete = {
+                nearCatIndex = getNextUniqueCat(nearCatIndex, farCatIndex)
+            }
+        )
+
+        // 3. 返回按鈕
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.Top
+                .padding(16.dp)
+                .align(Alignment.TopStart)
         ) {
             Button(
                 onClick = onNavigateBack,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier.height(50.dp)
             ) {
-                Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
+                Text("← 返回", style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
 }
 
 /**
- * 會單向連續移動且可互動的單一貓咪 Composable，具有逐幀動畫。
+ * RotatingCat 元件 (保持不變)
  */
 @Composable
-fun MovingCat(
-    catFrames: List<Int>,
+fun RotatingCat(
+    catData: CatAsset,
     soundManager: SoundManager,
-    catSoundResources: List<Int>
+    yOffsetPx: Int,
+    catDisplaySize: androidx.compose.ui.unit.Dp,
+    startFromRight: Boolean,
+    moveDuration: Int,
+    onCycleComplete: () -> Unit
 ) {
-    // 獲取螢幕尺寸（DP）
     val configuration = LocalConfiguration.current
-    val screenWidthDp = configuration.screenWidthDp
-
-    // 獲取密度並進行轉換
     val density = LocalDensity.current
 
-    // 貓咪圖片的固定尺寸
-    val catSize = 250.dp
+    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
+    val catSizePx = with(density) { catDisplaySize.toPx() }
 
-    // 將 DP 尺寸轉換為 Int
-    val catSizeInt = with(density) { catSize.toPx().toInt() }
-    val screenWidthInt = with(density) { screenWidthDp.dp.toPx().toInt() }
+    val startX = if (startFromRight) screenWidthPx else -catSizePx
+    val endX = if (startFromRight) -catSizePx else screenWidthPx
 
-    // Y 軸固定在中央偏下的位置 (距離頂部約 100dp)
-    val fixedYOffsetDp = 100.dp
-    val fixedYOffsetInt = with(density) { fixedYOffsetDp.toPx().toInt() }
+    // 安全性檢查
+    if (catData.frames.isEmpty()) return
 
-    // 移動的目標 X 座標範圍 (從 0 到最右邊界)
-    // Animatable 使用 Float，因此轉換為 Float
-    val maxX = screenWidthInt.toFloat() - catSizeInt.toFloat()
+    // 動作動畫
+    var currentFrameIndex by remember { mutableIntStateOf(0) }
 
-    // 1. 動作動畫狀態 (逐幀動畫)
-    var currentFrameIndex by remember { mutableStateOf(0) }
-
-    // 啟動逐幀動畫循環
-    LaunchedEffect(Unit) {
+    LaunchedEffect(catData) {
+        currentFrameIndex = 0
         while(true) {
-            delay(100) // 每 100 毫秒切換一幀
-            currentFrameIndex = (currentFrameIndex + 1) % catFrames.size
+            delay(150)
+            if (catData.frames.isNotEmpty()) {
+                currentFrameIndex = (currentFrameIndex + 1) % catData.frames.size
+            }
         }
     }
 
-    // 2. 移動動畫狀態 (使用 Animatable 實現單向移動和瞬間重置)
+    // 移動動畫
+    val xOffsetAnim = remember { Animatable(startX) }
 
-    // 狀態：追蹤當前 X 座標。 Animatable 預設為 Float
-    val xOffset = remember { Animatable(0f) }
-
-    // 控制單向循環的邏輯 (使用 Animatable 確保到達邊緣和瞬間重置)
-    LaunchedEffect(key1 = Unit) {
+    LaunchedEffect(key1 = startFromRight, key2 = moveDuration) {
+        delay(Random.nextLong(0, 1000))
         while(true) {
-            // 步驟 A: 動畫到最右側 (maxX)
-            xOffset.animateTo(
-                targetValue = maxX,
-                animationSpec = tween(durationMillis = 3000, easing = LinearEasing) // 3 秒移動
+            xOffsetAnim.animateTo(
+                targetValue = endX,
+                animationSpec = tween(durationMillis = moveDuration, easing = LinearEasing)
             )
-
-            // 步驟 B: 瞬間重置回左側 (0)
-            xOffset.snapTo(0f)
-
-            // 步驟 C: 短暫等待後再次啟動
-            delay(50)
+            xOffsetAnim.snapTo(startX)
+            onCycleComplete()
+            delay(Random.nextLong(1000, 2500))
         }
     }
 
-    // 點擊回饋狀態 (縮放動畫)
+    // 點擊效果
     var isTapped by remember { mutableStateOf(false) }
-    val scale = animateFloatAsState(
-        targetValue = if (isTapped) 1.2f else 1.0f, // 點擊時放大 20%
-        animationSpec = tween(durationMillis = 100),
-        label = "catTapScale"
-    )
+    val tapScale = animateFloatAsState(if (isTapped) 1.2f else 1.0f, tween(100), label = "tap")
 
-    // 點擊區域和動畫
+    val directionScaleX = if (startFromRight) -1f else 1f
+    val finalScale = tapScale.value
+
     Box(
         modifier = Modifier
-            .size(catSize)
-            // 應用移動動畫位置 (將 Float 轉換為 IntOffset)
-            .offset { IntOffset(xOffset.value.toInt(), fixedYOffsetInt) }
-            .scale(scale.value)
+            .offset { IntOffset(xOffsetAnim.value.toInt(), yOffsetPx) }
+            .size(catDisplaySize)
+            .scale(finalScale)
+            .scale(scaleX = directionScaleX, scaleY = 1f)
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        // 1. 播放單一貓叫聲
-                        val soundId = catSoundResources.random()
-                        soundManager.playSound(soundId)
-
-                        // 2. 觸發視覺回饋 (縮放動畫)
-                        isTapped = true
-
-                        // 3. 移除觸覺回饋 (震動) 邏輯
+                detectTapGestures(onTap = {
+                    try {
+                        soundManager.playSound(catData.soundRes)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
-                )
+                    isTapped = true
+                })
             }
     ) {
-        // 應用 tap 結束後的視覺效果重置
-        LaunchedEffect(isTapped) {
-            if (isTapped) {
-                delay(100)
-                isTapped = false
-            }
-        }
+        if (isTapped) { LaunchedEffect(Unit) { delay(150); isTapped = false } }
 
-        // 貓咪的圖片 (載入當前幀)
+        val safeIndex = currentFrameIndex % catData.frames.size
+
         Image(
-            painter = painterResource(id = catFrames[currentFrameIndex]), // 使用逐幀動畫的圖片
-            contentDescription = "互動貓咪",
+            painter = painterResource(id = catData.frames[safeIndex]),
+            contentDescription = catData.name,
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxSize()
-        )
-
-        // 顯示貓咪名字，方便識別
-        Text(
-            text = "Click Me!",
-            modifier = Modifier.align(Alignment.BottomCenter).offset(y = 30.dp),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 18.sp
         )
     }
 }
