@@ -60,7 +60,7 @@ fun SplashScreen(navController: NavController) {
         ) {
             // Logo 圖片
             Image(
-                painter = painterResource(id = R.drawable.icon),
+                painter = painterResource(id = R.drawable.logo),
                 contentDescription = "App Logo",
                 modifier = Modifier
                     .size(100.dp)  // 調整 Logo 大小

@@ -47,7 +47,7 @@ fun LoginScreen(
 
             // LOGO
             Image(
-                painter = painterResource(id = R.drawable.icon),
+                painter = painterResource(id = R.drawable.logo),
                 contentDescription = "樂之聲 Logo",
                 modifier = Modifier.size(110.dp)
             )

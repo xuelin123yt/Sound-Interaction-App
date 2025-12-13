@@ -136,7 +136,7 @@ fun GameHomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.icon),
+                            painter = painterResource(id = R.drawable.logo),
                             contentDescription = "樂之聲 Logo",
                             modifier = Modifier.size(90.dp)
                         )
