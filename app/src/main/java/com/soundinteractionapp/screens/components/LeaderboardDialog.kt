@@ -1,13 +1,16 @@
 package com.soundinteractionapp.screens.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -33,7 +36,7 @@ import com.soundinteractionapp.data.LeaderboardItem
 import com.soundinteractionapp.data.LeaderboardViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class) // 👈 需要加入這個註解來使用 TopAppBar 的 ScrollBehavior
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun LeaderboardDialog(
     viewModel: LeaderboardViewModel,
@@ -50,43 +53,43 @@ fun LeaderboardDialog(
     val level3List by viewModel.level3Rank.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    // ✅ 設定 ScrollBehavior：設定為 enterAlways，往下滑時隱藏，往上滑時顯示
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-
+    // 啟動時載入資料
     LaunchedEffect(Unit) {
         viewModel.loadAllLeaderboards()
     }
 
+    // ✅ 設定 ScrollBehavior：enterAlways 代表往下滑列表時標題隱藏，往上滑時標題顯示
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
+            usePlatformDefaultWidth = false, // 全寬度
+            decorFitsSystemWindows = false   // 延伸至狀態列
         )
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFF8F5FF)
+            color = Color(0xFFF8F5FF) // 淡紫色背景
         ) {
-            // ✅ 使用 Scaffold 來管理 TopBar 和內容的捲動連動
+            // ✅ 使用 Scaffold 來管理 TopBar 的滑動行為
             Scaffold(
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection), // 👈 綁定捲動行為
+                    .nestedScroll(scrollBehavior.nestedScrollConnection), // 綁定捲動事件
                 topBar = {
-                    // ✅ 將原本的紫色 Box 區塊改寫為 TopAppBar
-                    // 這裡使用 CenterAlignedTopAppBar 讓標題置中
+                    // ✅ 將紫色區塊改為 TopAppBar
                     CenterAlignedTopAppBar(
                         title = {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(bottom = 8.dp) // 增加一點底部間距
+                                modifier = Modifier.padding(bottom = 8.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.EmojiEvents,
                                     contentDescription = null,
                                     tint = Color(0xFFFFD700),
-                                    modifier = Modifier.size(32.dp) // 稍微縮小一點圖示以適應 TopBar
+                                    modifier = Modifier.size(32.dp)
                                 )
                                 Text(
                                     text = "榮譽排行榜",
@@ -105,9 +108,8 @@ fun LeaderboardDialog(
                                 )
                             }
                         },
-                        // 自定義背景顏色與漸層
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = Color.Transparent, // 設為透明以便顯示下方的漸層
+                            containerColor = Color.Transparent, // 設為透明以顯示漸層
                             scrolledContainerColor = Color.Transparent
                         ),
                         modifier = Modifier
@@ -117,7 +119,7 @@ fun LeaderboardDialog(
                                 )
                             )
                             .statusBarsPadding(), // 避開狀態列
-                        scrollBehavior = scrollBehavior // 👈 連接行為
+                        scrollBehavior = scrollBehavior // 連接捲動行為
                     )
                 }
             ) { innerPadding ->
@@ -125,10 +127,9 @@ fun LeaderboardDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding) // 👈 這是關鍵，Scaffold 會自動計算剩下的空間
+                        .padding(innerPadding) // Scaffold 會自動計算需要的 padding
                 ) {
-                    // === 2. 分頁標籤 (Tabs) ===
-                    // Tabs 放在這裡，當紫色 TopBar 收起時，Tabs 會往上頂並停留在頂部
+                    // === Tabs (不會被隱藏，會停留在頂部) ===
                     TabRow(
                         selectedTabIndex = pagerState.currentPage,
                         containerColor = Color.White,
@@ -157,7 +158,7 @@ fun LeaderboardDialog(
                         }
                     }
 
-                    // === 3. 內容區 (HorizontalPager) ===
+                    // === 列表內容區 ===
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -194,7 +195,7 @@ fun LeaderboardDialog(
     }
 }
 
-// ... EmptyStateDisplay, LeaderboardList, LeaderboardRowItem 維持不變 ...
+// 空狀態顯示
 @Composable
 fun EmptyStateDisplay() {
     Column(
@@ -232,10 +233,11 @@ fun LeaderboardList(list: List<LeaderboardItem>) {
 
 @Composable
 fun LeaderboardRowItem(item: LeaderboardItem) {
+    // 前三名的特殊顏色
     val rankColor = when (item.rank) {
-        1 -> Color(0xFFFFD700)
-        2 -> Color(0xFFC0C0C0)
-        3 -> Color(0xFFCD7F32)
+        1 -> Color(0xFFFFD700) // 金
+        2 -> Color(0xFFC0C0C0) // 銀
+        3 -> Color(0xFFCD7F32) // 銅
         else -> Color.Transparent
     }
 
@@ -245,7 +247,7 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
@@ -253,6 +255,7 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 名次圈圈
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -270,18 +273,23 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
 
             Spacer(Modifier.width(16.dp))
 
+            // 頭像：使用資料中的 ID (預設為 user.png)
             Image(
                 painter = painterResource(id = item.avatarResId),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color.Gray),
+                    .size(48.dp) // 設定大小
+                    .clip(CircleShape) // 先裁切成圓形
+                    // ✅ 新增這行：加入 2dp 寬的紫色圓形邊框
+                    // 建議放在 clip 之後，background 之前
+                    .border(width = 2.dp, color = Color(0xFF673AB7), shape = CircleShape)
+                    .background(Color.White), // 背景色 (上次修改的)
                 contentScale = ContentScale.Crop
             )
 
             Spacer(Modifier.width(16.dp))
 
+            // 名字與分數
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name,

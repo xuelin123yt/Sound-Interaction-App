@@ -21,18 +21,24 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
+import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.utils.GameInputManager
 import com.soundinteractionapp.GameProgressManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
@@ -51,10 +57,24 @@ fun Level1FollowBeatScreen(
 ) {
     val context = LocalContext.current
     val progressManager = remember { GameProgressManager(context) }
-
-    // ✅ 檢查是否為訪客
     val auth = FirebaseAuth.getInstance()
     val isGuest = auth.currentUser?.isAnonymous == true
+
+    // --- 1. 載入圖片資源 ---
+    val charIdle = ImageBitmap.imageResource(id = R.drawable.character_1)
+    val charHit = ImageBitmap.imageResource(id = R.drawable.character_2)
+
+    val hitEffectsIds = remember {
+        listOf(
+            R.drawable.hit_feedback_1,
+            R.drawable.hit_feedback_2,
+            R.drawable.hit_feedback_3,
+            R.drawable.hit_feedback_4,
+            R.drawable.hit_feedback_5,
+            R.drawable.hit_feedback_6
+        )
+    }
+    val hitEffectBitmaps = hitEffectsIds.map { ImageBitmap.imageResource(id = it) }
 
     // --- 狀態管理 ---
     var gameState by remember { mutableStateOf(GameState.SELECTION) }
@@ -65,10 +85,15 @@ fun Level1FollowBeatScreen(
     var feedbackText by remember { mutableStateOf("") }
     var countdownValue by remember { mutableIntStateOf(3) }
 
-    // 衝刺 Time 計數器
-    var perfectStreak by remember { mutableIntStateOf(0) }
+    // 視覺狀態
+    var isCharacterStriking by remember { mutableStateOf(false) }
+    var characterAnimJob: Job? by remember { mutableStateOf(null) }
+
+    var currentEffectFrame by remember { mutableIntStateOf(-1) }
+    var effectJob: Job? by remember { mutableStateOf(null) }
 
     // 統計數據
+    var perfectStreak by remember { mutableIntStateOf(0) }
     var perfectCount by remember { mutableIntStateOf(0) }
     var goodCount by remember { mutableIntStateOf(0) }
     var missCount by remember { mutableIntStateOf(0) }
@@ -76,17 +101,11 @@ fun Level1FollowBeatScreen(
     // 視覺變數
     var trackBorderColor by remember { mutableStateOf(Color.White.copy(alpha = 0.5f)) }
     var effectColor by remember { mutableStateOf(Color.White) }
-
-    // 懲罰閃光
     val penaltyFlashAlpha = remember { Animatable(0f) }
 
-    val hitEffectScale = remember { Animatable(1f) }
-
-    // 完美特效改成綠色
     val perfectColor = Color(0xFF00E676)
     val goldColor = Color(0xFFFFD700)
 
-    // 衝刺 Time 動畫
     val infiniteTransition = rememberInfiniteTransition(label = "rushTimeAnim")
     val rushTimeOffsetY by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -98,15 +117,12 @@ fun Level1FollowBeatScreen(
         label = "rushTimeOffsetY"
     )
 
-    // 時間與譜面
     var startTime by remember { mutableLongStateOf(0L) }
     var currentTime by remember { mutableLongStateOf(0L) }
     val currentNotes = remember { mutableStateListOf<Note>() }
 
-    // 語錄
     val perfectPhrases = remember { listOf("太棒了!", "太厲害了吧", "是個高手") }
-    val goodPhrases = remember { listOf("差一點呀", "很接近了!") }
-    val missPhrases = remember { listOf("好可惜呀", "加把勁", "還是菜鳥呢") }
+    val goodPhrases = remember { listOf("差一點呀", "很接近了!","你做得到的!") }
 
     LaunchedEffect(trackBorderColor) {
         if (trackBorderColor != Color.White.copy(alpha = 0.5f)) {
@@ -141,35 +157,31 @@ fun Level1FollowBeatScreen(
 
         if (gameState == GameState.FINISHED) {
             soundManager.stopMusic()
-
-            // ✅ 只有非訪客才處理解鎖邏輯
             if (!isGuest) {
-                // 解鎖條件 (8500 / 14000)
                 if (selectedDifficulty == Difficulty.EASY && score >= 8500) {
                     progressManager.unlockDifficulty(Difficulty.NORMAL.label)
                 } else if (selectedDifficulty == Difficulty.NORMAL && score >= 14000) {
                     progressManager.unlockDifficulty(Difficulty.HARD.label)
                 }
             }
-
             rankingViewModel.onGameFinished(levelId = selectedDifficulty.scoreId, finalScore = score)
             gameState = GameState.RESULT
         }
     }
 
-    // --- 遊戲邏輯迴圈 ---
+    // --- 遊戲邏輯 ---
     LaunchedEffect(gameState) {
         if (gameState == GameState.PLAYING) {
             val gameDuration = selectedDifficulty.duration + 2000L
             while (isActive) {
                 currentTime = System.currentTimeMillis() - startTime
                 currentNotes.forEach { note ->
-                    if (!note.isHit && (currentTime - note.targetTime > 200)) {
+                    if (!note.isHit && (currentTime - note.targetTime > 250)) {
                         note.isHit = true
                         combo = 0
                         perfectStreak = 0
                         missCount++
-                        feedbackText = missPhrases.random()
+                        feedbackText = "錯過了呀"
                         effectColor = Color.Red
                         trackBorderColor = Color.Red
                     }
@@ -186,14 +198,34 @@ fun Level1FollowBeatScreen(
     LaunchedEffect(Unit) {
         GameInputManager.keyEvents.collectLatest {
             if (gameState == GameState.PLAYING) {
+
+                // 1. 播放音效
+                try {
+                    soundManager.playSound(R.raw.hit_music)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                // 2. 播放揮棒動畫
+                characterAnimJob?.cancel()
+                characterAnimJob = launch {
+                    isCharacterStriking = true
+                    delay(100)
+                    isCharacterStriking = false
+                }
+
+                // 3. 判定邏輯
+                val baseJudgeRadius = 120f
                 val targetNote = currentNotes.firstOrNull { note ->
-                    !note.isHit && abs(note.targetTime - currentTime) < 150
+                    if (note.isHit) return@firstOrNull false
+                    val pixelDistance = abs((note.targetTime - currentTime) * selectedDifficulty.speed)
+                    pixelDistance <= baseJudgeRadius
                 }
 
                 if (targetNote != null) {
-                    val diff = abs(targetNote.targetTime - currentTime)
+                    val pixelDistance = abs((targetNote.targetTime - currentTime) * selectedDifficulty.speed)
+                    val offsetPercentage = pixelDistance / baseJudgeRadius
                     targetNote.isHit = true
-                    combo++
 
                     val rushThreshold = when (selectedDifficulty) {
                         Difficulty.EASY -> 20
@@ -202,35 +234,54 @@ fun Level1FollowBeatScreen(
                     }
                     val isRushTime = combo >= rushThreshold
 
-                    if (diff < 60) {
-                        // --- PERFECT ---
-                        perfectStreak++
-                        score += if (isRushTime) 150 else 100
-                        perfectCount++
-                        feedbackText = perfectPhrases.random()
+                    if (offsetPercentage <= 0.65f) {
+                        // 打中：特效
+                        effectJob?.cancel()
+                        effectJob = launch {
+                            currentEffectFrame = 0
+                            while (currentEffectFrame < 5) {
+                                delay(30)
+                                currentEffectFrame++
+                            }
+                            delay(30)
+                            currentEffectFrame = -1
+                        }
 
-                        // 一般完美用綠色，衝刺時用金色
-                        effectColor = if (isRushTime) goldColor else perfectColor
-                        trackBorderColor = if (isRushTime) goldColor else perfectColor
-
-                        launch {
-                            hitEffectScale.snapTo(1.5f)
-                            hitEffectScale.animateTo(1f, tween(300))
+                        if (offsetPercentage <= 0.35f) {
+                            combo++
+                            perfectStreak++
+                            score += if (isRushTime) 150 else 100
+                            perfectCount++
+                            feedbackText = perfectPhrases.random()
+                            effectColor = if (isRushTime) goldColor else perfectColor
+                            trackBorderColor = if (isRushTime) goldColor else perfectColor
+                        } else {
+                            combo++
+                            perfectStreak = 0
+                            score += if (isRushTime) 60 else 50
+                            goodCount++
+                            feedbackText = goodPhrases.random()
+                            effectColor = Color.Cyan
+                            trackBorderColor = Color.Cyan
                         }
                     } else {
-                        // --- GOOD ---
+                        // Miss (按太偏)
+                        combo = 0
                         perfectStreak = 0
-                        score += if (isRushTime) 60 else 50
-                        goodCount++
-                        feedbackText = goodPhrases.random()
-                        effectColor = Color.Cyan
-                        trackBorderColor = Color.Cyan
+                        missCount++
+                        score = (score - 10).coerceAtLeast(0)
+                        feedbackText = "錯過了"
+                        effectColor = Color.Gray
+                        trackBorderColor = Color.Red
                         launch {
-                            hitEffectScale.snapTo(1.2f)
-                            hitEffectScale.animateTo(1f, tween(150))
+                            penaltyFlashAlpha.snapTo(0.3f)
+                            penaltyFlashAlpha.animateTo(0f, tween(100))
                         }
                     }
                 } else {
+                    // 空揮
+                    feedbackText = "揮空了呦"
+                    effectColor = Color.Gray
                     score = (score - 1).coerceAtLeast(0)
                     launch {
                         penaltyFlashAlpha.snapTo(0.3f)
@@ -241,7 +292,7 @@ fun Level1FollowBeatScreen(
         }
     }
 
-    // --- 主要畫面佈局 ---
+    // --- 畫面佈局 ---
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -251,7 +302,7 @@ fun Level1FollowBeatScreen(
                 )
             )
     ) {
-        // (A) 難度選擇選單
+        // (A) 難度選擇
         if (gameState == GameState.SELECTION) {
             Column(
                 modifier = Modifier
@@ -280,7 +331,6 @@ fun Level1FollowBeatScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ✅ 只有非訪客才顯示解鎖條件
                 if (!isGuest) {
                     Surface(
                         color = Color.Black.copy(alpha = 0.3f),
@@ -295,7 +345,6 @@ fun Level1FollowBeatScreen(
                     }
                     Spacer(modifier = Modifier.height(32.dp))
                 } else {
-                    // ✅ 訪客顯示提示訊息
                     Surface(
                         color = Color(0xFF1E88E5).copy(alpha = 0.2f),
                         shape = RoundedCornerShape(12.dp),
@@ -330,7 +379,8 @@ fun Level1FollowBeatScreen(
                 Box(modifier = Modifier.fillMaxSize().background(Color.Red.copy(alpha = penaltyFlashAlpha.value)))
             }
 
-            Column(modifier = Modifier.align(Alignment.TopCenter).padding(top = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            // UI 往下移
+            Column(modifier = Modifier.align(Alignment.TopCenter).padding(top = 30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("難度: ${selectedDifficulty.label}", color = selectedDifficulty.color, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text("分數: $score", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
 
@@ -354,33 +404,79 @@ fun Level1FollowBeatScreen(
                 }
             }
 
+            // --- Canvas 繪圖 ---
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val centerY = size.height / 2
-                val judgeLineX = 250f
+                // 核心：所有物件往下移
+                val adjustedCenterY = (size.height / 2) + 130f
+
+                val judgeLineX = 280f
                 val currentSpeed = selectedDifficulty.speed
 
-                drawRect(Color.White.copy(alpha = 0.05f), Offset(0f, centerY - 80f), Size(size.width, 160f))
-                drawLine(trackBorderColor, Offset(0f, centerY - 80f), Offset(size.width, centerY - 80f), 4f)
-                drawLine(trackBorderColor, Offset(0f, centerY + 80f), Offset(size.width, centerY + 80f), 4f)
+                val noteRadius = 80f
+                val judgeLineHeight = 320f
+                val trackHeight = 110f
 
-                drawCircle(color = Color.White.copy(alpha = 0.3f), radius = 60f, center = Offset(judgeLineX, centerY), style = Stroke(width = 4f))
+                // 1. 背景軌道
+                drawRect(Color.White.copy(alpha = 0.05f), Offset(0f, adjustedCenterY - trackHeight), Size(size.width, trackHeight * 2))
+                drawLine(trackBorderColor, Offset(0f, adjustedCenterY - trackHeight), Offset(size.width, adjustedCenterY - trackHeight), 4f)
+                drawLine(trackBorderColor, Offset(0f, adjustedCenterY + trackHeight), Offset(size.width, adjustedCenterY + trackHeight), 4f)
 
-                if (hitEffectScale.value > 1.0f) {
-                    drawCircle(color = effectColor, radius = 60f * hitEffectScale.value, center = Offset(judgeLineX, centerY), style = Stroke(width = 8f))
-                }
+                // 2. 繪製角色
+                val charImage = if (isCharacterStriking) charHit else charIdle
 
+                val charScale = 0.25f
+                val charW = charImage.width * charScale
+                val charH = charImage.height * charScale
+
+                val charX = judgeLineX - (charW * 0.7f) - 70f
+                val charY = adjustedCenterY - (charH / 2) - 50f
+
+                drawImage(
+                    image = charImage,
+                    dstOffset = IntOffset(charX.toInt(), charY.toInt()),
+                    dstSize = IntSize(charW.toInt(), charH.toInt())
+                )
+
+                // 3. 判定線
+                drawLine(
+                    color = Color.White.copy(alpha = 0.9f),
+                    start = Offset(judgeLineX, adjustedCenterY - (judgeLineHeight / 2)),
+                    end = Offset(judgeLineX, adjustedCenterY + (judgeLineHeight / 2)),
+                    strokeWidth = 6f
+                )
+
+                // 4. 音符
                 currentNotes.forEach { note ->
                     if (!note.isHit) {
                         val noteX = judgeLineX + (note.targetTime - currentTime) * currentSpeed
-                        if (noteX > -100 && noteX < size.width + 100) {
-                            drawCircle(Color(0xFFFF5252), 40f, Offset(noteX, centerY))
-                            drawCircle(Color.White, 40f, Offset(noteX, centerY), style = Stroke(width = 4f))
+                        if (noteX > -150 && noteX < size.width + 150) {
+                            drawCircle(Color(0xFFFF5252), noteRadius, Offset(noteX, adjustedCenterY))
+                            drawCircle(Color.White, noteRadius, Offset(noteX, adjustedCenterY), style = Stroke(width = 6f))
+                            drawCircle(Color.White, 8f, Offset(noteX, adjustedCenterY))
                         }
                     }
                 }
+
+                // 5. 特效 (修正處：只使用一個 correct 的 dstOffset)
+                if (currentEffectFrame in 0..5) {
+                    val effectImage = hitEffectBitmaps[currentEffectFrame]
+                    val effectScale = 2.0f
+                    val effectW = effectImage.width * effectScale
+                    val effectH = effectImage.height * effectScale
+
+                    drawImage(
+                        image = effectImage,
+                        dstOffset = IntOffset(
+                            (judgeLineX - effectW / 2).toInt(),
+                            (adjustedCenterY - effectH / 2).toInt()
+                        ),
+                        dstSize = IntSize(effectW.toInt(), effectH.toInt())
+                    )
+                }
             }
 
-            Box(modifier = Modifier.align(Alignment.Center).padding(top = 220.dp)) {
+            // 文字下移
+            Box(modifier = Modifier.align(Alignment.Center).padding(top = 250.dp)) {
                 Text(feedbackText, style = MaterialTheme.typography.headlineLarge, color = effectColor, fontWeight = FontWeight.Bold)
             }
 
@@ -404,7 +500,7 @@ fun Level1FollowBeatScreen(
             }
         }
 
-        // (D) 結算畫面
+        // (D) 結算
         if (gameState == GameState.RESULT) {
             GameResultContent(
                 score = score,
@@ -421,7 +517,7 @@ fun Level1FollowBeatScreen(
     }
 }
 
-// 結算畫面
+// ... 下方保持 GameResultContent 與 DifficultySelectionCard (省略以節省空間) ...
 @Composable
 fun GameResultContent(
     score: Int,

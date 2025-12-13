@@ -11,11 +11,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-// 這是給 UI 顯示用的資料結構
+// ✅ 修改：預設 avatarResId 改為 R.drawable.user
 data class LeaderboardItem(
     val rank: Int = 0,
     val name: String = "載入中...",
-    val avatarResId: Int = R.drawable.avatar_01, // 預設頭像
+    val avatarResId: Int = R.drawable.user,
     val score: Int = 0
 )
 
@@ -44,14 +44,11 @@ class LeaderboardViewModel : ViewModel() {
             _isLoading.value = true
 
             // 1. 載入各個關卡的排行榜
-            // 根據截圖，欄位名稱分別是: level1Total, level2Score, level3Score
             loadRankForField("level1Total", _level1Rank)
-            loadRankForField("level2Score", _level2Rank) // 雖然目前可能沒資料，但寫好邏輯
+            loadRankForField("level2Score", _level2Rank)
             loadRankForField("level3Score", _level3Rank)
 
             // 2. 總排行榜 (特別處理)
-            // 因為 Firestore 沒有存 "grandTotal"，我們暫時用 level1Total 的前 20 名來計算
-            // 最佳解法是在上傳分數時，多算一個 grandTotal 欄位存進去
             loadTotalRank()
 
             _isLoading.value = false
@@ -63,7 +60,6 @@ class LeaderboardViewModel : ViewModel() {
         targetFlow: MutableStateFlow<List<LeaderboardItem>>
     ) {
         try {
-            // 步驟 A: 抓取分數 (只抓前 20 名)
             val scoreSnapshot = db.collection("user_scores")
                 .orderBy(field, Query.Direction.DESCENDING)
                 .limit(20)
@@ -72,20 +68,17 @@ class LeaderboardViewModel : ViewModel() {
 
             val itemList = mutableListOf<LeaderboardItem>()
 
-            // 步驟 B: 針對每一筆分數，去抓取使用者的名字
             scoreSnapshot.documents.forEachIndexed { index, doc ->
-                val userId = doc.id // 取得 User ID
+                val userId = doc.id
                 val score = doc.getLong(field)?.toInt() ?: 0
 
-                if (score > 0) { // 只顯示分數大於 0 的人
-                    // 根據 User ID 去 users 集合抓名字
+                if (score > 0) {
                     val userProfile = fetchUserProfile(userId)
-
                     itemList.add(
                         LeaderboardItem(
                             rank = index + 1,
-                            name = userProfile.first, // 名字
-                            avatarResId = userProfile.second, // 頭像 ID
+                            name = userProfile.first,
+                            avatarResId = userProfile.second,
                             score = score
                         )
                     )
@@ -98,10 +91,8 @@ class LeaderboardViewModel : ViewModel() {
         }
     }
 
-    // 總排行榜邏輯 (目前先簡單加總，未來建議資料庫加欄位)
     private suspend fun loadTotalRank() {
         try {
-            // 這裡我們先抓取 level1 分數最高的人，然後把他們的三個分數加總
             val scoreSnapshot = db.collection("user_scores")
                 .orderBy("level1Total", Query.Direction.DESCENDING)
                 .limit(20)
@@ -129,9 +120,7 @@ class LeaderboardViewModel : ViewModel() {
                     )
                 }
             }
-            // 在記憶體中重新排序總分
             itemList.sortByDescending { it.score }
-            // 重新標記名次
             val rankedList = itemList.mapIndexed { index, item -> item.copy(rank = index + 1) }
 
             _totalRank.value = rankedList
@@ -141,17 +130,19 @@ class LeaderboardViewModel : ViewModel() {
         }
     }
 
-    // 輔助函式：去 users 集合抓個資
+    // ✅ 修改：若抓不到圖片或格式錯誤，統一回傳 R.drawable.user
     private suspend fun fetchUserProfile(userId: String): Pair<String, Int> {
         return try {
             val userDoc = db.collection("users").document(userId).get().await()
             val name = userDoc.getString("displayName") ?: "神秘玩家"
-            // 假設你的 photoUrl 存的是 String 格式的 Resource ID (例如 "213123...")
             val avatarStr = userDoc.getString("photoUrl")
-            val avatarId = avatarStr?.toIntOrNull() ?: R.drawable.avatar_01
+
+            // 嘗試轉換，失敗或是 null 則使用預設 user 圖片
+            val avatarId = avatarStr?.toIntOrNull() ?: R.drawable.user
+
             Pair(name, avatarId)
         } catch (e: Exception) {
-            Pair("未知玩家", R.drawable.avatar_01)
+            Pair("未知玩家", R.drawable.user)
         }
     }
 }
