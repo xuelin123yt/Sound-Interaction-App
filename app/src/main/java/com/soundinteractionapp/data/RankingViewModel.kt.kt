@@ -2,26 +2,30 @@ package com.soundinteractionapp.data
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-class RankingViewModel(private val repository: RankingRepository = RankingRepository()) :
-    ViewModel() {
+class RankingViewModel : ViewModel() {
+    // 初始化 Repository
+    private val repository = RankingRepository()
 
-    // ✅ 直接使用 Repository 的 scores，不需要額外的邏輯
+    // 將 Repository 的分數狀態暴露給 UI 觀察
     val scores: StateFlow<ScoreEntry> = repository.scores
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ScoreEntry()
-        )
 
     /**
-     * 遊戲結束時更新分數
+     * ✅ [關鍵修正] 新增這個函式！
+     * Level 2 的 UI 就是在呼叫這個函式，加上去後錯誤就會消失。
+     */
+    fun updateHighScore(scoreId: Int, newScore: Int) {
+        viewModelScope.launch {
+            repository.updateHighScore(scoreId, newScore)
+        }
+    }
+
+    /**
+     * [保留] Level 1 舊有的呼叫方式 (相容性)
      */
     fun onGameFinished(levelId: Int, finalScore: Int) {
-        repository.updateHighScore(levelId, finalScore)
+        updateHighScore(levelId, finalScore)
     }
 }

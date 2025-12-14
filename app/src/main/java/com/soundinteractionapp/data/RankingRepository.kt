@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class RankingRepository {
+    // 預設分數為 0
     private val _scores = MutableStateFlow(ScoreEntry())
     val scores: StateFlow<ScoreEntry> = _scores.asStateFlow()
 
@@ -28,14 +29,17 @@ class RankingRepository {
 
             when {
                 currentUser == null -> {
-                    Log.d("RankingRepo", "用戶登出")
+                    // 登出：清空並停止
+                    Log.d("RankingRepo", "用戶登出，清空數據")
                     clearScoresAndStopListening()
                 }
                 currentUser.isAnonymous -> {
-                    Log.d("RankingRepo", "訪客登入")
-                    clearScoresAndStopListening()
+                    // ✅ 訪客修正：只停止雲端同步，但「保留」本地記憶體中的分數
+                    stopListeningOnly()
+                    Log.d("RankingRepo", "訪客模式：停止雲端同步，保留本地暫存分數")
                 }
                 else -> {
+                    // 正式用戶：監聽雲端
                     Log.d("RankingRepo", "正式用戶登入: ${currentUser.uid}")
                     listenToUserScores(currentUser.uid)
                 }
@@ -43,25 +47,23 @@ class RankingRepository {
         }
 
         val currentUser = auth.currentUser
-        when {
-            currentUser == null || currentUser.isAnonymous -> {
-                _scores.value = ScoreEntry()
-            }
-            else -> {
-                listenToUserScores(currentUser.uid)
-            }
+        if (currentUser != null && !currentUser.isAnonymous) {
+            listenToUserScores(currentUser.uid)
         }
     }
 
-    private fun clearScoresAndStopListening() {
+    private fun stopListeningOnly() {
         scoreListener?.remove()
         scoreListener = null
+    }
+
+    private fun clearScoresAndStopListening() {
+        stopListeningOnly()
         _scores.value = ScoreEntry()
-        Log.d("RankingRepo", "分數已清空，監聽已停止")
     }
 
     private fun listenToUserScores(userId: String) {
-        scoreListener?.remove()
+        stopListeningOnly()
         scoreListener = db.collection("user_scores").document(userId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -73,71 +75,43 @@ class RankingRepository {
                     val entry = snapshot.toObject(ScoreEntry::class.java)
                     if (entry != null) {
                         _scores.value = entry
-                        Log.d("RankingRepo", "分數已同步: $entry")
                     }
-                } else {
-                    _scores.value = ScoreEntry()
-                    Log.d("RankingRepo", "用戶無分數記錄，使用空分數")
                 }
             }
     }
 
     /**
-     * 更新最高分
-     * @param scoreId 11=L1易, 12=L1中, 13=L1難, 2=L2, 3=L3 (新增)
+     * ✅ 核心邏輯：只記錄歷史最高分
+     * 只有當 newScore > current.score 時才更新
      */
     fun updateHighScore(scoreId: Int, newScore: Int) {
         val current = _scores.value
         var isUpdated = false
         var updatedEntry = current
 
-        // 1. 判斷是否打破紀錄
         when (scoreId) {
-            11 -> { // Level 1 簡單
-                if (newScore > current.level1Easy) {
-                    updatedEntry = current.copy(level1Easy = newScore)
-                    isUpdated = true
-                }
-            }
-            12 -> { // Level 1 普通
-                if (newScore > current.level1Normal) {
-                    updatedEntry = current.copy(level1Normal = newScore)
-                    isUpdated = true
-                }
-            }
-            13 -> { // Level 1 困難
-                if (newScore > current.level1Hard) {
-                    updatedEntry = current.copy(level1Hard = newScore)
-                    isUpdated = true
-                }
-            }
-            2 -> { // Level 2
-                if (newScore > current.level2Score) {
-                    updatedEntry = current.copy(level2Score = newScore)
-                    isUpdated = true
-                }
-            }
-            // ✅ 新增：Level 3 邏輯
-            3 -> {
-                if (newScore > current.level3Score) {
-                    updatedEntry = current.copy(level3Score = newScore)
-                    isUpdated = true
-                }
-            }
+            // Level 1
+            11 -> if (newScore > current.level1Easy) { updatedEntry = current.copy(level1Easy = newScore); isUpdated = true }
+            12 -> if (newScore > current.level1Normal) { updatedEntry = current.copy(level1Normal = newScore); isUpdated = true }
+            13 -> if (newScore > current.level1Hard) { updatedEntry = current.copy(level1Hard = newScore); isUpdated = true }
+
+            // Level 2
+            21 -> if (newScore > current.level2Easy) { updatedEntry = current.copy(level2Easy = newScore); isUpdated = true }
+            22 -> if (newScore > current.level2Normal) { updatedEntry = current.copy(level2Normal = newScore); isUpdated = true }
+            23 -> if (newScore > current.level2Hard) { updatedEntry = current.copy(level2Hard = newScore); isUpdated = true }
+
+            // Level 3
+            3 -> if (newScore > current.level3Score) { updatedEntry = current.copy(level3Score = newScore); isUpdated = true }
         }
 
-        // 2. 如果打破紀錄，更新本地並檢查是否需要上傳雲端
         if (isUpdated) {
-            _scores.value = updatedEntry // 先更新本地
+            // 1. 更新本地 StateFlow (讓 UI 變更，包含訪客)
+            _scores.value = updatedEntry
 
+            // 2. 若是正式會員，則上傳雲端
             val currentUser = auth.currentUser
-
-            // ★★★ 關鍵判斷：只有「非 null」且「非訪客」才上傳 ★★★
             if (currentUser != null && !currentUser.isAnonymous) {
                 uploadToCloud(updatedEntry)
-                Log.d("RankingRepo", "正式會員，分數已上傳雲端")
-            } else {
-                Log.d("RankingRepo", "訪客模式，分數僅暫存本地，不上傳")
             }
         }
     }
@@ -149,9 +123,8 @@ class RankingRepository {
                 db.collection("user_scores").document(userId)
                     .set(entry, SetOptions.merge())
                     .await()
-                Log.d("RankingRepo", "分數上傳成功!")
             } catch (e: Exception) {
-                Log.e("RankingRepo", "分數上傳失敗", e)
+                e.printStackTrace()
             }
         }
     }

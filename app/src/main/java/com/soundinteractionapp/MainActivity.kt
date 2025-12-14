@@ -6,14 +6,12 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
+import androidx.activity.viewModels // 確保有這個 import
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -32,31 +30,26 @@ import com.soundinteractionapp.screens.game.GameModeScreenContent
 import com.soundinteractionapp.screens.game.levels.*
 
 // Data
-import com.soundinteractionapp.data.RankingRepository
+// RankingRepository 已經在 ViewModel 內部處理，這裡不需要 import 了 (除非其他地方用到)
 import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.data.AuthViewModel
 import com.soundinteractionapp.data.ProfileViewModel
 import com.soundinteractionapp.screens.game.levels.level1.Level1FollowBeatScreen
+import com.soundinteractionapp.screens.game.levels.level2.Level2FollowBeatScreen
 import com.soundinteractionapp.screens.settings.SettingScreen
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var soundManager: SoundManager
-    private val rankingRepository = RankingRepository()
+
+    // ❌ 移除這行：不再需要從 Activity 建立 Repository
+    // private val rankingRepository = RankingRepository()
+
     private var isInGameLevel by mutableStateOf(false)
 
-    // ViewModels
-    private val rankingViewModel by viewModels<RankingViewModel> {
-        object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                if (modelClass.isAssignableFrom(RankingViewModel::class.java)) {
-                    @Suppress("UNCHECKED_CAST")
-                    return RankingViewModel(rankingRepository) as T
-                }
-                throw IllegalArgumentException("Unknown ViewModel class")
-            }
-        }
-    }
+    // ✅ 修正：因為 ViewModel 沒有參數，直接這樣寫即可
+    private val rankingViewModel by viewModels<RankingViewModel>()
+
     private val authViewModel by viewModels<AuthViewModel>()
     private val profileViewModel by viewModels<ProfileViewModel>()
 
@@ -114,7 +107,6 @@ class MainActivity : ComponentActivity() {
                             onNavigateToSettings = {
                                 navController.navigate(Screen.Settings.route)
                             },
-                            // ✅ 登出時：停止 BGM → 登出 → 回到 Splash
                             onLogout = {
                                 soundManager.stopBgm()
                                 authViewModel.signOut()
@@ -132,7 +124,6 @@ class MainActivity : ComponentActivity() {
                                 navController.popBackStack()
                             },
                             onLogout = {
-                                // ✅ Profile 頁面登出也回到 Splash
                                 soundManager.stopBgm()
                                 authViewModel.signOut()
                                 navController.navigate(Screen.Splash.route) {
@@ -143,7 +134,6 @@ class MainActivity : ComponentActivity() {
                             profileViewModel = profileViewModel,
                             rankingViewModel = rankingViewModel,
                             onNavigateToLogin = {
-                                // 導回 Welcome 頁面 (會自動顯示登入畫面)
                                 navController.navigate(Screen.Welcome.route) {
                                     popUpTo(0) { inclusive = true }
                                 }
@@ -196,46 +186,33 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Screen.GameLevel2.route) {
-                        Level2FindAnimalScreen({ navController.popBackStack() })
+                        Level2FollowBeatScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            soundManager = soundManager,
+                            rankingViewModel = rankingViewModel
+                        )
                     }
                     composable(Screen.GameLevel3.route) {
                         Level3PitchScreen(
                             onNavigateBack = { navController.popBackStack() },
-                            rankingViewModel = rankingViewModel // <--- 關鍵修改：傳入共享實例
+                            rankingViewModel = rankingViewModel
                         )
                     }
                     composable(Screen.GameLevel4.route) {
                         Level4CompositionScreen({ navController.popBackStack() })
                     }
 
-                    composable(Screen.CatInteraction.route) {
-                        CatInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
-                    composable(Screen.PianoInteraction.route) {
-                        PianoInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
-                    composable(Screen.DogInteraction.route) {
-                        DogInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
-                    composable(Screen.BirdInteraction.route) {
-                        BirdInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
-                    composable(Screen.DrumInteraction.route) {
-                        DrumInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
-                    composable(Screen.BellInteraction.route) {
-                        BellInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
+                    // Interactions...
+                    composable(Screen.CatInteraction.route) { CatInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.PianoInteraction.route) { PianoInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.DogInteraction.route) { DogInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.BirdInteraction.route) { BirdInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.DrumInteraction.route) { DrumInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.BellInteraction.route) { BellInteractionScreen({ navController.popBackStack() }, soundManager) }
 
-                    composable(Screen.OceanInteraction.route) {
-                        OceanInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
-                    composable(Screen.RainInteraction.route) {
-                        RainInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
-                    composable(Screen.WindInteraction.route) {
-                        WindInteractionScreen({ navController.popBackStack() }, soundManager)
-                    }
+                    composable(Screen.OceanInteraction.route) { OceanInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.RainInteraction.route) { RainInteractionScreen({ navController.popBackStack() }, soundManager) }
+                    composable(Screen.WindInteraction.route) { WindInteractionScreen({ navController.popBackStack() }, soundManager) }
                 }
             }
         }
@@ -243,8 +220,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (event?.repeatCount != 0) return super.onKeyDown(keyCode, event)
-        val isVolumeKey = keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
-                keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+        val isVolumeKey = keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
         if (isVolumeKey && !isInGameLevel) return super.onKeyDown(keyCode, event)
 
         when (keyCode) {

@@ -175,12 +175,12 @@ fun ProfileScreen(
         onDismissAboutDialog = { showAboutDialog = false },
         onDismissPasswordDialog = { showPasswordDialog = false },
         onDismissDeleteDialog = { showDeleteDialog = false },
-        onAccountDeleted = onLogout, // 刪除帳號後執行登出
+        onAccountDeleted = onLogout,
         context = context
     )
 }
 
-// 分數顯示卡片元件
+// ========== ✅ 修正後的分數顯示卡片元件 ==========
 @Composable
 fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
     val scores by rankingViewModel.scores.collectAsState()
@@ -208,7 +208,7 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
                 color = Color(0xFFEEEEEE)
             )
 
-            // Level 1
+            // ========== Level 1 ==========
             Text(
                 "🎵 關卡 1: 跟著按",
                 fontSize = 14.sp,
@@ -220,17 +220,73 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
             ScoreRowItem("普通", scores.level1Normal, Color(0xFF4FC3F7))
             ScoreRowItem("困難", scores.level1Hard, Color(0xFFFF8A65))
 
+            // 顯示關卡 1 總分
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp, horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "總分",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF333333)
+                )
+                Text(
+                    "${scores.level1Total} 分",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF673AB7)
+                )
+            }
+
             Spacer(Modifier.height(12.dp))
 
-            // Level 2
+            // ========== ✅ Level 2 - 更新為三個難度 ==========
             Text(
-                "🐶 關卡 2: 找出動物",
+                "🎹 關卡 2: 鋼琴節奏",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Gray
             )
             Spacer(Modifier.height(8.dp))
-            ScoreRowItem("最高分", scores.level2Score, Color(0xFF9575CD))
+            ScoreRowItem("簡單 (天空之城)", scores.level2Easy, Color(0xFF4CAF50))
+            ScoreRowItem("普通 (龍貓)", scores.level2Normal, Color(0xFF2196F3))
+            ScoreRowItem("困難 (Maria)", scores.level2Hard, Color(0xFFE53935))
+
+            // 顯示關卡 2 總分
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp, horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "總分",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF333333)
+                )
+                Text(
+                    "${scores.level2Total} 分",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF673AB7)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ========== Level 3 ==========
+            Text(
+                "🎤 關卡 3: 音高控制",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
+            Spacer(Modifier.height(8.dp))
+            ScoreRowItem("最高分", scores.level3Score, Color(0xFFE91E63))
         }
     }
 }
