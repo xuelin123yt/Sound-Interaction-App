@@ -36,6 +36,7 @@ import com.soundinteractionapp.data.AuthViewModel
 import com.soundinteractionapp.data.ProfileViewModel
 import com.soundinteractionapp.screens.game.levels.level1.Level1FollowBeatScreen
 import com.soundinteractionapp.screens.game.levels.level2.Level2FollowBeatScreen
+import com.soundinteractionapp.screens.game.levels.level4.Level4Screen
 import com.soundinteractionapp.screens.settings.SettingScreen
 
 class MainActivity : ComponentActivity() {
@@ -199,7 +200,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Screen.GameLevel4.route) {
-                        Level4CompositionScreen({ navController.popBackStack() })
+                        Level4Screen(navController)
                     }
 
                     // Interactions...
