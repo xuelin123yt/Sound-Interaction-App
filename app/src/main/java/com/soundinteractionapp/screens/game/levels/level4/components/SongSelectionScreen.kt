@@ -33,7 +33,7 @@ import kotlin.math.abs
 fun SongSelectionScreen(
     beatmaps: List<Beatmap>,
     onSongSelected: (Int) -> Unit,
-    onBack: () -> Unit  // 新增返回回調
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -109,16 +109,16 @@ fun SongSelectionScreen(
     val selectedBeatmap = beatmaps.getOrNull(selectedIndex)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 背景圖片（模糊化）- 使用 backgroundImageResId
+        // 背景圖片（模糊化）
         if (selectedBeatmap != null) {
             Image(
                 painter = painterResource(id = selectedBeatmap.backgroundImageResId),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(20.dp),  // 模糊半徑 20dp
+                    .blur(20.dp),
                 contentScale = ContentScale.Crop,
-                alpha = 0.3f  // 降低透明度避免干擾前景
+                alpha = 0.3f
             )
         }
 
@@ -154,10 +154,9 @@ fun SongSelectionScreen(
                             SongCard(
                                 beatmap = beatmap,
                                 isSelected = isSelected,
-                                onClick = {
-                                    if (isSelected) {
-                                        onSongSelected(beatmap.id)
-                                    } else {
+                                onSelect = {
+                                    // 只負責滾動到該項目，不直接進入遊戲
+                                    if (!isSelected) {
                                         coroutineScope.launch {
                                             listState.animateScrollToItem(index)
                                         }
@@ -197,5 +196,29 @@ fun SongSelectionScreen(
                 modifier = Modifier.size(32.dp)
             )
         }
+
+        // 右上角玩法說明按鈕
+        GameInstructionsButton(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        )
+
+        // 右下角操作按鈕
+        GameActionButtons(
+            onStartGame = {
+                // 開始遊戲 - 使用當前選中的歌曲
+                selectedBeatmap?.let { onSongSelected(it.id) }
+            },
+            onShowExample = {
+                // TODO: 實現遊玩範例邏輯
+                // 可以播放示範影片或進入教學模式
+            },
+            isGameStartEnabled = selectedBeatmap != null,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .fillMaxWidth(0.45f)  // 加寬按鈕區域
+        )
     }
 }

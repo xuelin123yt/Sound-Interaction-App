@@ -102,6 +102,12 @@ class RankingRepository {
 
             // Level 3
             3 -> if (newScore > current.level3Score) { updatedEntry = current.copy(level3Score = newScore); isUpdated = true }
+
+            // ========== ✅ 新增：Level 4 的四個譜面 ==========
+            41 -> if (newScore > current.level4Osu01) { updatedEntry = current.copy(level4Osu01 = newScore); isUpdated = true }
+            42 -> if (newScore > current.level4Osu02) { updatedEntry = current.copy(level4Osu02 = newScore); isUpdated = true }
+            43 -> if (newScore > current.level4Osu03) { updatedEntry = current.copy(level4Osu03 = newScore); isUpdated = true }
+            44 -> if (newScore > current.level4Osu04) { updatedEntry = current.copy(level4Osu04 = newScore); isUpdated = true }
         }
 
         if (isUpdated) {

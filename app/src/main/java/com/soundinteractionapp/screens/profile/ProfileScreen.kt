@@ -243,7 +243,7 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ========== ✅ Level 2 - 更新為三個難度 ==========
+            // ========== Level 2 ==========
             Text(
                 "🎹 關卡 2: 鋼琴節奏",
                 fontSize = 14.sp,
@@ -287,6 +287,42 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
             )
             Spacer(Modifier.height(8.dp))
             ScoreRowItem("最高分", scores.level3Score, Color(0xFFE91E63))
+
+            Spacer(Modifier.height(12.dp))
+
+            // ========== ✅ 新增：Level 4 ==========
+            Text(
+                "🎵 關卡 4: 音遊模式",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Gray
+            )
+            Spacer(Modifier.height(8.dp))
+            ScoreRowItem("OSU_01", scores.level4Osu01, Color(0xFF9C27B0))
+            ScoreRowItem("OSU_02", scores.level4Osu02, Color(0xFF673AB7))
+            ScoreRowItem("OSU_03", scores.level4Osu03, Color(0xFF3F51B5))
+            ScoreRowItem("OSU_04", scores.level4Osu04, Color(0xFF2196F3))
+
+            // 顯示關卡 4 總分
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp, horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "總分",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF333333)
+                )
+                Text(
+                    "${scores.level4Total} 分",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF673AB7)
+                )
+            }
         }
     }
 }

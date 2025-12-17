@@ -22,15 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.soundinteractionapp.R
 import com.soundinteractionapp.data.LeaderboardItem
 import com.soundinteractionapp.data.LeaderboardViewModel
@@ -42,151 +39,135 @@ fun LeaderboardDialog(
     viewModel: LeaderboardViewModel,
     onDismiss: () -> Unit
 ) {
-    val tabs = listOf("總排行榜", "關卡一", "關卡二", "關卡三")
-    val pagerState = rememberPagerState(pageCount = { 4 })
+    val tabs = listOf("總排行榜", "關卡一", "關卡二", "關卡三", "關卡四")
+    val pagerState = rememberPagerState(pageCount = { 5 })
     val scope = rememberCoroutineScope()
 
-    // 收集資料流
     val totalList by viewModel.totalRank.collectAsState()
     val level1List by viewModel.level1Rank.collectAsState()
     val level2List by viewModel.level2Rank.collectAsState()
     val level3List by viewModel.level3Rank.collectAsState()
+    val level4List by viewModel.level4Rank.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    // 啟動時載入資料
     LaunchedEffect(Unit) {
         viewModel.loadAllLeaderboards()
     }
 
-    // ✅ 設定 ScrollBehavior：enterAlways 代表往下滑列表時標題隱藏，往上滑時標題顯示
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false, // 全寬度
-            decorFitsSystemWindows = false   // 延伸至狀態列
-        )
+    // ✅ 不使用 Dialog，直接用 Box 覆蓋整個畫面
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8F5FF))
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFF8F5FF) // 淡紫色背景
-        ) {
-            // ✅ 使用 Scaffold 來管理 TopBar 的滑動行為
-            Scaffold(
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 頂部紫色區域
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection), // 綁定捲動事件
-                topBar = {
-                    // ✅ 將紫色區塊改為 TopAppBar
-                    CenterAlignedTopAppBar(
-                        title = {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.EmojiEvents,
-                                    contentDescription = null,
-                                    tint = Color(0xFFFFD700),
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Text(
-                                    text = "榮譽排行榜",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = onDismiss) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = "返回",
-                                    tint = Color.White
-                                )
-                            }
-                        },
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = Color.Transparent, // 設為透明以顯示漸層
-                            scrolledContainerColor = Color.Transparent
-                        ),
-                        modifier = Modifier
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color(0xFF673AB7), Color(0xFF512DA8))
-                                )
-                            )
-                            .statusBarsPadding(), // 避開狀態列
-                        scrollBehavior = scrollBehavior // 連接捲動行為
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF673AB7), Color(0xFF512DA8))
+                        )
+                    )
+                    .padding(vertical = 12.dp)
+            ) {
+                // 返回按鈕
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "返回",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
-            ) { innerPadding ->
-                // === 內容區塊 ===
-                Column(
+
+                // 中央內容
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding) // Scaffold 會自動計算需要的 padding
+                        .align(Alignment.Center)
+                        .padding(horizontal = 56.dp)
                 ) {
-                    // === Tabs (不會被隱藏，會停留在頂部) ===
-                    TabRow(
-                        selectedTabIndex = pagerState.currentPage,
-                        containerColor = Color.White,
-                        contentColor = Color(0xFF673AB7),
-                        indicator = { tabPositions ->
-                            TabRowDefaults.SecondaryIndicator(
-                                Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                                color = Color(0xFF673AB7),
-                                height = 3.dp
+                    Icon(
+                        imageVector = Icons.Filled.EmojiEvents,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "榮譽排行榜",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+
+            // Tabs
+            TabRow(
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = Color.White,
+                contentColor = Color(0xFF673AB7),
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                        color = Color(0xFF673AB7),
+                        height = 3.dp
+                    )
+                }
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = {
+                            Text(
+                                title,
+                                fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 15.sp
                             )
-                        }
-                    ) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = pagerState.currentPage == index,
-                                onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                                text = {
-                                    Text(
-                                        title,
-                                        fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
-                                        fontSize = 15.sp
-                                    )
-                                },
-                                modifier = Modifier.padding(vertical = 12.dp)
-                            )
-                        }
+                        },
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+                }
+            }
+
+            // 列表區域
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(Color(0xFFF4F4F4))
+            ) {
+                if (isLoading) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF673AB7))
                     }
+                } else {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        val currentList = when (page) {
+                            0 -> totalList
+                            1 -> level1List
+                            2 -> level2List
+                            3 -> level3List
+                            4 -> level4List
+                            else -> emptyList()
+                        }
 
-                    // === 列表內容區 ===
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(Color(0xFFF4F4F4))
-                    ) {
-                        if (isLoading) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = Color(0xFF673AB7))
-                            }
+                        if (currentList.isEmpty()) {
+                            EmptyStateDisplay()
                         } else {
-                            HorizontalPager(
-                                state = pagerState,
-                                modifier = Modifier.fillMaxSize()
-                            ) { page ->
-                                val currentList = when (page) {
-                                    0 -> totalList
-                                    1 -> level1List
-                                    2 -> level2List
-                                    3 -> level3List
-                                    else -> emptyList()
-                                }
-
-                                if (currentList.isEmpty()) {
-                                    EmptyStateDisplay()
-                                } else {
-                                    LeaderboardList(currentList)
-                                }
-                            }
+                            LeaderboardList(currentList)
                         }
                     }
                 }
@@ -195,7 +176,6 @@ fun LeaderboardDialog(
     }
 }
 
-// 空狀態顯示
 @Composable
 fun EmptyStateDisplay() {
     Column(
@@ -233,11 +213,10 @@ fun LeaderboardList(list: List<LeaderboardItem>) {
 
 @Composable
 fun LeaderboardRowItem(item: LeaderboardItem) {
-    // 前三名的特殊顏色
     val rankColor = when (item.rank) {
-        1 -> Color(0xFFFFD700) // 金
-        2 -> Color(0xFFC0C0C0) // 銀
-        3 -> Color(0xFFCD7F32) // 銅
+        1 -> Color(0xFFFFD700)
+        2 -> Color(0xFFC0C0C0)
+        3 -> Color(0xFFCD7F32)
         else -> Color.Transparent
     }
 
@@ -255,7 +234,6 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 名次圈圈
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -273,23 +251,19 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
 
             Spacer(Modifier.width(16.dp))
 
-            // 頭像：使用資料中的 ID (預設為 user.png)
             Image(
                 painter = painterResource(id = item.avatarResId),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(48.dp) // 設定大小
-                    .clip(CircleShape) // 先裁切成圓形
-                    // ✅ 新增這行：加入 2dp 寬的紫色圓形邊框
-                    // 建議放在 clip 之後，background 之前
+                    .size(48.dp)
+                    .clip(CircleShape)
                     .border(width = 2.dp, color = Color(0xFF673AB7), shape = CircleShape)
-                    .background(Color.White), // 背景色 (上次修改的)
+                    .background(Color.White),
                 contentScale = ContentScale.Crop
             )
 
             Spacer(Modifier.width(16.dp))
 
-            // 名字與分數
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name,

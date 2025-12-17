@@ -440,6 +440,7 @@ fun GameScreen(
                 goodCount = goodCount,
                 missCount = missCount,
                 hasNextLevel = hasNextLevel,
+                beatmapId = beatmap.id,
                 onNextLevel = {
                     gameState = GameState.READY
                     score = 0

@@ -1,6 +1,7 @@
 package com.soundinteractionapp.screens.game.levels.level4.components
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.Beatmap
@@ -28,17 +30,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.coerceAtLeast
 
 /**
- * 歌曲卡片 - 固定大小版本（只改變透明度和陰影）
+ * 歌曲卡片 - 固定大小版本（移除直接點擊進入遊戲的邏輯）
  */
 @Composable
 fun SongCard(
     beatmap: Beatmap,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onSelect: () -> Unit
 ) {
-    // ✅ 移除 scale 和 offset 動畫，保持固定大小
-    // 只用透明度和陰影來強調選中狀態
-
     val elevation by animateDpAsState(
         targetValue = if (isSelected) 16.dp else 4.dp,
         animationSpec = spring(
@@ -48,29 +47,26 @@ fun SongCard(
         label = "elevation"
     )
 
-    // 根據 beatmap.id 獲取主題色
     val themeColor = getThemeColorById(beatmap.id)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)  // ✅ 移除垂直 padding
+            .padding(horizontal = 20.dp)
             .zIndex(if (isSelected) 10f else 0f)
     ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(75.dp)  // ✅ 固定高度，不再 scale
-                .clickable(onClick = onClick),
+                .height(75.dp)
+                .clickable(onClick = onSelect),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = Color.Transparent),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
 
-                // ============== 1. 背景層：主題色 + 毛玻璃效果 ==============
-
-                // 主題色背景層
+                // 背景層：主題色 + 毛玻璃效果
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -80,7 +76,6 @@ fun SongCard(
                         )
                 )
 
-                // 毛玻璃 (Blur) 效果層
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -91,7 +86,6 @@ fun SongCard(
                         )
                 )
 
-                // 選中時的邊框高亮
                 if (isSelected) {
                     Box(
                         modifier = Modifier
@@ -109,14 +103,13 @@ fun SongCard(
                     )
                 }
 
-                // ============== 2. 內容文字層 ==============
+                // 內容文字層
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 24.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // 標題 - 使用 MarqueeText 實現跑馬燈效果
                     Box(modifier = Modifier.height(if (isSelected) 28.dp else 24.dp)) {
                         MarqueeText(
                             text = beatmap.title,
@@ -130,7 +123,6 @@ fun SongCard(
                         )
                     }
 
-                    // 描述文字
                     if (beatmap.description.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(0.dp))
                         Text(
@@ -147,6 +139,209 @@ fun SongCard(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * 右上角玩法說明按鈕
+ */
+@Composable
+fun GameInstructionsButton(
+    modifier: Modifier = Modifier
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Button(
+        onClick = { showDialog = true },
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF64D8FF).copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = "玩法說明",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+    }
+
+    if (showDialog) {
+        GameInstructionsDialog(onDismiss = { showDialog = false })
+    }
+}
+
+/**
+ * 玩法說明對話框
+ */
+@Composable
+fun GameInstructionsDialog(onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF1A1A2E)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "🎮 遊戲玩法",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF64D8FF),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                InstructionItem(
+                    number = "1",
+                    title = "選擇歌曲",
+                    description = "從左側列表選擇你想要挑戰的歌曲"
+                )
+
+                InstructionItem(
+                    number = "2",
+                    title = "跟隨節奏",
+                    description = "音符會從上方落下，在正確時機點擊對應按鈕"
+                )
+
+                InstructionItem(
+                    number = "3",
+                    title = "獲得分數",
+                    description = "Perfect > Great > Good > Miss，盡可能打出完美節奏！"
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF64D8FF)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "我知道了",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 說明項目
+ */
+@Composable
+fun InstructionItem(number: String, title: String, description: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(
+                    Color(0xFF64D8FF).copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = number,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF64D8FF)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = description,
+                fontSize = 13.sp,
+                color = Color.White.copy(alpha = 0.7f),
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+/**
+ * 右下角操作按鈕組
+ */
+@Composable
+fun GameActionButtons(
+    onStartGame: () -> Unit,
+    onShowExample: () -> Unit,
+    modifier: Modifier = Modifier,
+    isGameStartEnabled: Boolean = true
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // 遊玩範例按鈕
+        OutlinedButton(
+            onClick = onShowExample,
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color.White
+            ),
+            border = BorderStroke(
+                2.dp,
+                Color.White.copy(alpha = 0.5f)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = "遊玩範例",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
+
+        // 開始遊戲按鈕
+        Button(
+            onClick = onStartGame,
+            modifier = Modifier.weight(1f),
+            enabled = isGameStartEnabled,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF64D8FF),
+                disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = "開始遊戲",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
         }
     }
 }

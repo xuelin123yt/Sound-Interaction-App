@@ -23,8 +23,6 @@ import com.soundinteractionapp.screens.game.levels.level2.Level2Difficulty
 fun RankingDialogContent(onClose: () -> Unit, rankingViewModel: RankingViewModel) {
     val scores by rankingViewModel.scores.collectAsState()
 
-    // 移除 l3Max，因為關卡 3 不需要計算等級
-
     val infiniteTransition = rememberInfiniteTransition(label = "rankBounce")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f, targetValue = 1.2f,
@@ -61,12 +59,22 @@ fun RankingDialogContent(onClose: () -> Unit, rankingViewModel: RankingViewModel
                 }
                 item { TotalScoreRow(scores.level2Total); Divider(modifier = Modifier.padding(top = 8.dp)) }
 
-                // Level 3 (🔥 修改：不評分，只顯示分數)
+                // Level 3 (不評分，只顯示分數)
                 item { SectionTitle("🎤 關卡 3: 音高控制") }
                 item {
-                    // 使用 ScoreRowNoRank
                     ScoreRowNoRank("最高分", scores.level3Score, Color(0xFFE91E63))
                 }
+                item { Divider(modifier = Modifier.padding(top = 8.dp)) }
+
+                // ========== ✅ 新增：Level 4 ==========
+                item { SectionTitle("🎵 關卡 4: 音遊模式") }
+                item {
+                    ScoreRowNoRank("OSU_01", scores.level4Osu01, Color(0xFF9C27B0))
+                    ScoreRowNoRank("OSU_02", scores.level4Osu02, Color(0xFF673AB7))
+                    ScoreRowNoRank("OSU_03", scores.level4Osu03, Color(0xFF3F51B5))
+                    ScoreRowNoRank("OSU_04", scores.level4Osu04, Color(0xFF2196F3))
+                }
+                item { TotalScoreRow(scores.level4Total); Divider(modifier = Modifier.padding(top = 8.dp)) }
             }
 
             Button(onClick = onClose, modifier = Modifier.fillMaxWidth().padding(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7))) {
@@ -115,7 +123,7 @@ fun ScoreRowWithRank(levelName: String, score: Int, maxScore: Int, color: Color,
     }
 }
 
-// ✅ 新增：用於 Level 3 (無評分，純分數)
+// ✅ 用於 Level 3 & 4 (無評分，純分數)
 @Composable
 fun ScoreRowNoRank(levelName: String, score: Int, color: Color) {
     Row(

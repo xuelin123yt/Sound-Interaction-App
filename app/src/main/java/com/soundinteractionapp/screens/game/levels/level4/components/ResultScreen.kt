@@ -6,12 +6,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.soundinteractionapp.data.RankingViewModel
 
 @Composable
 fun ResultScreen(
@@ -23,10 +26,23 @@ fun ResultScreen(
     goodCount: Int,
     missCount: Int,
     hasNextLevel: Boolean,
+    beatmapId: Int,  // ✅ 新增：譜面 ID
     onNextLevel: () -> Unit,
     onRetry: () -> Unit,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    rankingViewModel: RankingViewModel = viewModel()  // ✅ 新增：排行榜 ViewModel
 ) {
+    // ========== ✅ 遊戲結束時提交分數 ==========
+    LaunchedEffect(score) {
+        // 根據 beatmapId 決定 scoreId
+        // beatmapId: 1 -> scoreId: 41 (OSU_01)
+        // beatmapId: 2 -> scoreId: 42 (OSU_02)
+        // beatmapId: 3 -> scoreId: 43 (OSU_03)
+        // beatmapId: 4 -> scoreId: 44 (OSU_04)
+        val scoreId = 40 + beatmapId
+        rankingViewModel.updateHighScore(scoreId, score)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()

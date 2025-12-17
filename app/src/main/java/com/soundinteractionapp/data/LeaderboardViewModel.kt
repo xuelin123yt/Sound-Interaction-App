@@ -21,7 +21,7 @@ data class LeaderboardItem(
 class LeaderboardViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
 
-    // 四個排行榜的資料狀態
+    // ========== ✅ 新增關卡四的排行榜 ==========
     private val _totalRank = MutableStateFlow<List<LeaderboardItem>>(emptyList())
     val totalRank = _totalRank.asStateFlow()
 
@@ -34,6 +34,9 @@ class LeaderboardViewModel : ViewModel() {
     private val _level3Rank = MutableStateFlow<List<LeaderboardItem>>(emptyList())
     val level3Rank = _level3Rank.asStateFlow()
 
+    private val _level4Rank = MutableStateFlow<List<LeaderboardItem>>(emptyList())
+    val level4Rank = _level4Rank.asStateFlow()  // ✅ 新增
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
@@ -44,9 +47,9 @@ class LeaderboardViewModel : ViewModel() {
 
             // 1. 載入各個關卡的排行榜
             loadRankForField("level1Total", _level1Rank)
-            // ✅ 關卡2改用特殊處理（因為需要計算三個難度總分）
-            loadLevel2Rank()
+            loadLevel2Rank()  // 關卡2特殊處理
             loadRankForField("level3Score", _level3Rank)
+            loadLevel4Rank()  // ✅ 新增：關卡4特殊處理
 
             // 2. 總排行榜 (特別處理)
             loadTotalRank()
@@ -60,7 +63,6 @@ class LeaderboardViewModel : ViewModel() {
         targetFlow: MutableStateFlow<List<LeaderboardItem>>
     ) {
         try {
-            // ✅ 移除 limit(20)，抓取所有資料
             val scoreSnapshot = db.collection("user_scores")
                 .get()
                 .await()
@@ -83,7 +85,6 @@ class LeaderboardViewModel : ViewModel() {
                 }
             }
 
-            // ✅ 排序後加上排名（不限制數量）
             itemList.sortByDescending { it.score }
             val rankedList = itemList.mapIndexed { index, item ->
                 item.copy(rank = index + 1)
@@ -97,10 +98,9 @@ class LeaderboardViewModel : ViewModel() {
         }
     }
 
-    // ✅ 新增：專門處理關卡2排行榜（需要計算三個難度總分）
+    // 關卡2排行榜（需要計算三個難度總分）
     private suspend fun loadLevel2Rank() {
         try {
-            // 先抓取所有分數資料
             val scoreSnapshot = db.collection("user_scores")
                 .get()
                 .await()
@@ -110,7 +110,6 @@ class LeaderboardViewModel : ViewModel() {
             scoreSnapshot.documents.forEach { doc ->
                 val userId = doc.id
 
-                // 計算關卡2的三個難度總分
                 val level2Easy = doc.getLong("level2Easy")?.toInt() ?: 0
                 val level2Normal = doc.getLong("level2Normal")?.toInt() ?: 0
                 val level2Hard = doc.getLong("level2Hard")?.toInt() ?: 0
@@ -128,7 +127,6 @@ class LeaderboardViewModel : ViewModel() {
                 }
             }
 
-            // 排序並加上排名（✅ 顯示所有玩家）
             itemList.sortByDescending { it.score }
             val rankedList = itemList.mapIndexed { index, item ->
                 item.copy(rank = index + 1)
@@ -142,7 +140,51 @@ class LeaderboardViewModel : ViewModel() {
         }
     }
 
-    // ✅ 修改：總排行榜也要使用關卡2的總分
+    // ========== ✅ 新增：關卡4排行榜（需要計算四個譜面總分） ==========
+    private suspend fun loadLevel4Rank() {
+        try {
+            val scoreSnapshot = db.collection("user_scores")
+                .get()
+                .await()
+
+            val itemList = mutableListOf<LeaderboardItem>()
+
+            scoreSnapshot.documents.forEach { doc ->
+                val userId = doc.id
+
+                // 計算關卡4的四個譜面總分
+                val level4Osu01 = doc.getLong("level4Osu01")?.toInt() ?: 0
+                val level4Osu02 = doc.getLong("level4Osu02")?.toInt() ?: 0
+                val level4Osu03 = doc.getLong("level4Osu03")?.toInt() ?: 0
+                val level4Osu04 = doc.getLong("level4Osu04")?.toInt() ?: 0
+                val level4Total = level4Osu01 + level4Osu02 + level4Osu03 + level4Osu04
+
+                if (level4Total > 0) {
+                    val userProfile = fetchUserProfile(userId)
+                    itemList.add(
+                        LeaderboardItem(
+                            name = userProfile.first,
+                            avatarResId = userProfile.second,
+                            score = level4Total
+                        )
+                    )
+                }
+            }
+
+            itemList.sortByDescending { it.score }
+            val rankedList = itemList.mapIndexed { index, item ->
+                item.copy(rank = index + 1)
+            }
+
+            _level4Rank.value = rankedList
+            Log.d("Leaderboard", "關卡4排行榜載入成功: ${rankedList.size} 筆")
+
+        } catch (e: Exception) {
+            Log.e("Leaderboard", "Error loading level4: ${e.message}")
+        }
+    }
+
+    // ========== ✅ 修改：總排行榜加入關卡4 ==========
     private suspend fun loadTotalRank() {
         try {
             val scoreSnapshot = db.collection("user_scores")
@@ -157,7 +199,7 @@ class LeaderboardViewModel : ViewModel() {
                 // 關卡1總分
                 val l1 = doc.getLong("level1Total")?.toInt() ?: 0
 
-                // ✅ 關卡2總分（三個難度相加）
+                // 關卡2總分（三個難度相加）
                 val l2Easy = doc.getLong("level2Easy")?.toInt() ?: 0
                 val l2Normal = doc.getLong("level2Normal")?.toInt() ?: 0
                 val l2Hard = doc.getLong("level2Hard")?.toInt() ?: 0
@@ -166,7 +208,15 @@ class LeaderboardViewModel : ViewModel() {
                 // 關卡3分數
                 val l3 = doc.getLong("level3Score")?.toInt() ?: 0
 
-                val total = l1 + l2 + l3
+                // ✅ 關卡4總分（四個譜面相加）
+                val l4Osu01 = doc.getLong("level4Osu01")?.toInt() ?: 0
+                val l4Osu02 = doc.getLong("level4Osu02")?.toInt() ?: 0
+                val l4Osu03 = doc.getLong("level4Osu03")?.toInt() ?: 0
+                val l4Osu04 = doc.getLong("level4Osu04")?.toInt() ?: 0
+                val l4 = l4Osu01 + l4Osu02 + l4Osu03 + l4Osu04
+
+                // ✅ 總分 = 關卡1 + 關卡2 + 關卡3 + 關卡4
+                val total = l1 + l2 + l3 + l4
 
                 if (total > 0) {
                     val userProfile = fetchUserProfile(userId)
@@ -200,7 +250,6 @@ class LeaderboardViewModel : ViewModel() {
             val name = userDoc.getString("displayName") ?: "神秘玩家"
             val avatarStr = userDoc.getString("photoUrl")
 
-            // 嘗試轉換，失敗或是 null 則使用預設 user 圖片
             val avatarId = avatarStr?.toIntOrNull() ?: R.drawable.user
 
             Pair(name, avatarId)
