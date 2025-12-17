@@ -18,6 +18,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import com.soundinteractionapp.R
+import com.soundinteractionapp.SoundManager  // ✅ 新增
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.Beatmap
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.BeatmapRegistry
 import com.soundinteractionapp.screens.game.levels.level4.logic.*
@@ -25,19 +26,22 @@ import com.soundinteractionapp.screens.game.levels.level4.models.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
-// ✅ 加入缺少的 imports
 import com.soundinteractionapp.screens.game.levels.level4.HitResult
 import com.soundinteractionapp.screens.game.levels.level4.NoteType
 
 /**
- * 遊戲主畫面
+ * 遊戲主畫面 - 已修復音效延遲問題
+ *
+ * ✅ 改用 SoundManager 的 SoundPool
+ * ✅ 移除 MediaPlayer 的打擊音效
  */
 @Composable
 fun GameScreen(
     navController: NavController,
     beatmap: Beatmap,
     onBack: () -> Unit,
-    onNextLevel: () -> Unit
+    onNextLevel: () -> Unit,
+    soundManager: SoundManager  // ✅ 新增參數
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -58,7 +62,7 @@ fun GameScreen(
     var countdownValue by remember { mutableIntStateOf(0) }
     var isCountingDown by remember { mutableStateOf(false) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
-    var hitSoundPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    // ❌ 移除 hitSoundPlayer
     var musicDuration by remember { mutableLongStateOf(0L) }
     var pausedPosition by remember { mutableIntStateOf(0) }
     var audioOffset by remember { mutableIntStateOf(0) }
@@ -80,14 +84,9 @@ fun GameScreen(
         }
     }
 
+    // ✅ 新的打擊音效播放方法 - 使用 SoundPool
     fun playHitSound() {
-        try {
-            hitSoundPlayer?.reset()
-            hitSoundPlayer = MediaPlayer.create(context, R.raw.osu_hit_sound)
-            hitSoundPlayer?.start()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        soundManager.playHitSound()
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -191,7 +190,7 @@ fun GameScreen(
                     )
                 },
                 onSliderReverse = {
-                    playHitSound()
+                    playHitSound()  // ✅ 現在使用 SoundPool
                 }
             )
 
@@ -213,7 +212,7 @@ fun GameScreen(
     DisposableEffect(Unit) {
         onDispose {
             mediaPlayer?.release()
-            hitSoundPlayer?.release()
+            // ❌ 移除 hitSoundPlayer?.release()
         }
     }
 
@@ -258,7 +257,7 @@ fun GameScreen(
                                 screenHeight = screenHeight,
                                 beatmap = beatmap,
                                 onHit = { activeNote, hitResult ->
-                                    playHitSound()
+                                    playHitSound()  // ✅ 零延遲音效
 
                                     when (hitResult) {
                                         HitResult.PERFECT -> {
@@ -307,7 +306,7 @@ fun GameScreen(
                                 screenHeight = screenHeight,
                                 beatmap = beatmap,
                                 onHit = { activeNote, _ ->
-                                    playHitSound()
+                                    playHitSound()  // ✅ 零延遲音效
                                     activeNote.isHit = true
                                     activeNote.sliderStartTime = currentTime
                                     activeNote.sliderProgress = 0f
@@ -330,7 +329,7 @@ fun GameScreen(
                                     activeNote = activeNote,
                                     currentTime = currentTime,
                                     onComplete = { hitResult, endPosition ->
-                                        playHitSound()
+                                        playHitSound()  // ✅ 零延遲音效
 
                                         when (hitResult) {
                                             HitResult.PERFECT -> {

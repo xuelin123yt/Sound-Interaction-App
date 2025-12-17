@@ -39,6 +39,7 @@ fun WelcomeScreen(
     onNavigateToGame: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToLeaderboard: () -> Unit, // ✅ 新增此參數
     onLogout: () -> Unit,
     authViewModel: AuthViewModel = viewModel(),
     rankingViewModel: RankingViewModel = viewModel()
@@ -96,6 +97,7 @@ fun WelcomeScreen(
                 onNavigateToGame = onNavigateToGame,
                 onNavigateToProfile = onNavigateToProfile,
                 onNavigateToSettings = onNavigateToSettings,
+                onNavigateToLeaderboard = onNavigateToLeaderboard, // ✅ 傳遞參數
                 onLogout = onLogout
             )
         }

@@ -9,7 +9,7 @@ import com.soundinteractionapp.screens.game.levels.level4.models.TimingPoint
 object OSU_01 : Beatmap {
 
     override val id = 1
-    override val title = "哆啦A夢主題曲"
+    override val title = "哆啦A夢 主題曲"
     override val description = "Yamano Satoko"
 
     // ✅ 請確保音頻文件已添加到 res/raw/ 目錄

@@ -1,4 +1,4 @@
-package com.soundinteractionapp.screens.components
+package com.soundinteractionapp.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -28,21 +28,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.soundinteractionapp.R
-import com.soundinteractionapp.data.LeaderboardItem
 import com.soundinteractionapp.data.LeaderboardViewModel
+import com.soundinteractionapp.data.LeaderboardItem
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+// =====================================================
+// 🏆 排行榜畫面 (完整版)
+// =====================================================
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun LeaderboardDialog(
-    viewModel: LeaderboardViewModel,
-    onDismiss: () -> Unit
+fun LeaderboardScreen(
+    navController: NavController,
+    viewModel: LeaderboardViewModel = viewModel()
 ) {
     val tabs = listOf("總排行榜", "關卡一", "關卡二", "關卡三", "關卡四")
     val pagerState = rememberPagerState(pageCount = { 5 })
     val scope = rememberCoroutineScope()
 
+    // 使用 LeaderboardViewModel 的數據
     val totalList by viewModel.totalRank.collectAsState()
     val level1List by viewModel.level1Rank.collectAsState()
     val level2List by viewModel.level2Rank.collectAsState()
@@ -50,17 +56,19 @@ fun LeaderboardDialog(
     val level4List by viewModel.level4Rank.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
+    // 載入所有排行榜資料
     LaunchedEffect(Unit) {
         viewModel.loadAllLeaderboards()
     }
 
-    // ✅ 不使用 Dialog，直接用 Box 覆蓋整個畫面
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8F5FF))
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        containerColor = Color(0xFFF8F5FF)
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
             // 頂部紫色區域
             Box(
                 modifier = Modifier
@@ -74,7 +82,7 @@ fun LeaderboardDialog(
             ) {
                 // 返回按鈕
                 IconButton(
-                    onClick = onDismiss,
+                    onClick = { navController.navigateUp() },
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .padding(start = 4.dp)
@@ -87,7 +95,7 @@ fun LeaderboardDialog(
                     )
                 }
 
-                // 中央內容
+                // 中央標題
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
@@ -147,9 +155,7 @@ fun LeaderboardDialog(
                     .background(Color(0xFFF4F4F4))
             ) {
                 if (isLoading) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFF673AB7))
-                    }
+                    LoadingState()
                 } else {
                     HorizontalPager(
                         state = pagerState,
@@ -176,8 +182,37 @@ fun LeaderboardDialog(
     }
 }
 
+// =====================================================
+// ⏳ 載入中狀態
+// =====================================================
 @Composable
-fun EmptyStateDisplay() {
+private fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator(
+                color = Color(0xFF673AB7),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "載入排行榜中...",
+                color = Color.Gray,
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+// =====================================================
+// 📭 空白狀態
+// =====================================================
+@Composable
+private fun EmptyStateDisplay() {
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -191,16 +226,20 @@ fun EmptyStateDisplay() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "目前還沒有人上榜\n趕快去挑戰成為第一名吧！",
+            "目前還沒有人上榜\n趕快去挑戰成為第一名吧!",
             color = Color.Gray,
             textAlign = TextAlign.Center,
-            lineHeight = 24.sp
+            lineHeight = 24.sp,
+            fontSize = 16.sp
         )
     }
 }
 
+// =====================================================
+// 📋 排行榜列表
+// =====================================================
 @Composable
-fun LeaderboardList(list: List<LeaderboardItem>) {
+private fun LeaderboardList(list: List<LeaderboardItem>) {
     LazyColumn(
         contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp, start = 16.dp, end = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -211,12 +250,15 @@ fun LeaderboardList(list: List<LeaderboardItem>) {
     }
 }
 
+// =====================================================
+// 🎖️ 排行榜項目卡片
+// =====================================================
 @Composable
-fun LeaderboardRowItem(item: LeaderboardItem) {
+private fun LeaderboardRowItem(item: LeaderboardItem) {
     val rankColor = when (item.rank) {
-        1 -> Color(0xFFFFD700)
-        2 -> Color(0xFFC0C0C0)
-        3 -> Color(0xFFCD7F32)
+        1 -> Color(0xFFFFD700) // 金色
+        2 -> Color(0xFFC0C0C0) // 銀色
+        3 -> Color(0xFFCD7F32) // 銅色
         else -> Color.Transparent
     }
 
@@ -224,8 +266,12 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
     val rankTextWeight = if (item.rank <= 3) FontWeight.Bold else FontWeight.Normal
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White // ✅ 所有卡片都是白色背景
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp // ✅ 統一陰影高度
+        ),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
@@ -234,9 +280,10 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 排名圓圈
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(if (item.rank <= 3) rankColor else Color(0xFFEEEEEE)),
                 contentAlignment = Alignment.Center
@@ -245,25 +292,36 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
                     text = "${item.rank}",
                     color = rankTextColor,
                     fontWeight = rankTextWeight,
-                    fontSize = 16.sp
+                    fontSize = 18.sp
                 )
             }
 
             Spacer(Modifier.width(16.dp))
 
-            Image(
-                painter = painterResource(id = item.avatarResId),
-                contentDescription = null,
+            // 頭像
+            Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .border(width = 2.dp, color = Color(0xFF673AB7), shape = CircleShape)
-                    .background(Color.White),
-                contentScale = ContentScale.Crop
-            )
+                    .background(Color.White)
+                    .border(
+                        width = 2.dp,
+                        color = if (item.rank <= 3) rankColor else Color(0xFF673AB7),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = item.avatarResId),
+                    contentDescription = "頭像",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             Spacer(Modifier.width(16.dp))
 
+            // 使用者名稱
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name,
@@ -272,14 +330,38 @@ fun LeaderboardRowItem(item: LeaderboardItem) {
                     color = Color(0xFF333333),
                     maxLines = 1
                 )
+
+                // 前三名顯示獎牌
+                if (item.rank <= 3) {
+                    Text(
+                        text = when (item.rank) {
+                            1 -> "🏆 冠軍"
+                            2 -> "🥈 亞軍"
+                            3 -> "🥉 季軍"
+                            else -> ""
+                        },
+                        fontSize = 12.sp,
+                        color = rankColor
+                    )
+                }
             }
 
-            Text(
-                text = "${item.score}",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF673AB7)
-            )
+            // 分數
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = "${item.score}",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (item.rank <= 3) rankColor else Color(0xFF673AB7)
+                )
+                Text(
+                    text = "分",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+            }
         }
     }
 }

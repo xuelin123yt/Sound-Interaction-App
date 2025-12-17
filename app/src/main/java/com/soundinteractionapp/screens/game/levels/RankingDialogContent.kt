@@ -69,10 +69,10 @@ fun RankingDialogContent(onClose: () -> Unit, rankingViewModel: RankingViewModel
                 // ========== ✅ 新增：Level 4 ==========
                 item { SectionTitle("🎵 關卡 4: 音遊模式") }
                 item {
-                    ScoreRowNoRank("OSU_01", scores.level4Osu01, Color(0xFF9C27B0))
-                    ScoreRowNoRank("OSU_02", scores.level4Osu02, Color(0xFF673AB7))
-                    ScoreRowNoRank("OSU_03", scores.level4Osu03, Color(0xFF3F51B5))
-                    ScoreRowNoRank("OSU_04", scores.level4Osu04, Color(0xFF2196F3))
+                    ScoreRowNoRank("哆啦A夢 主題曲", scores.level4Osu01, Color(0xFF9C27B0))
+                    ScoreRowNoRank("神魔之塔 主題曲（夜）", scores.level4Osu02, Color(0xFF673AB7))
+                    ScoreRowNoRank("能看見海的街道", scores.level4Osu03, Color(0xFF3F51B5))
+                    ScoreRowNoRank("伴隨著你 (純音樂版)", scores.level4Osu04, Color(0xFF2196F3))
                 }
                 item { TotalScoreRow(scores.level4Total); Divider(modifier = Modifier.padding(top = 8.dp)) }
             }

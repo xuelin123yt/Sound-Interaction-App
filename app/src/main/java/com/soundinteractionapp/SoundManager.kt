@@ -30,7 +30,6 @@ class SoundManager(private val context: Context) {
         set(value) {
             field = value.coerceIn(0f, 1f)
             prefs.edit().putFloat("sfx_volume", field).apply()
-            // ✅ 音效音量改變時,更新 SoundPool 的音量
             updateSoundPoolVolume()
         }
 
@@ -40,7 +39,7 @@ class SoundManager(private val context: Context) {
             field = value
             prefs.edit().putBoolean("master_muted", field).apply()
             updateBgmVolume()
-            updateSoundPoolVolume() // ✅ 主音量靜音也要更新音效
+            updateSoundPoolVolume()
         }
 
     var isMusicMuted: Boolean = prefs.getBoolean("music_muted", false)
@@ -54,14 +53,13 @@ class SoundManager(private val context: Context) {
         set(value) {
             field = value
             prefs.edit().putBoolean("sfx_muted", field).apply()
-            updateSoundPoolVolume() // ✅ 音效靜音要更新音量
+            updateSoundPoolVolume()
         }
 
     // --- 背景音樂 (BGM) 用的 MediaPlayer ---
     private var bgmPlayer: MediaPlayer? = null
     private var currentBgmResId: Int? = null
 
-    // ✅ 新增：記錄 BGM 是否因為 App 暫停而被暫停，以及暫停時的播放位置
     private var wasBgmPlayingBeforePause = false
     private var bgmPausePosition = 0
 
@@ -69,7 +67,6 @@ class SoundManager(private val context: Context) {
     private val soundPool: SoundPool
     private val soundMap = mutableMapOf<String, Int>()
 
-    // ✅ 記錄當前音效音量,用於實時調整
     private var currentSfxVolume: Float = 1.0f
 
     init {
@@ -92,11 +89,13 @@ class SoundManager(private val context: Context) {
             loadSound("settings", R.raw.settings)
             loadSound("cancel", R.raw.cancel)
             loadSound("options2", R.raw.options2)
+
+            // ✅ 新增：預載遊戲打擊音效
+            loadSound("hit", R.raw.osu_hit_sound)
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
-        // ✅ 初始化時計算音效音量
         updateSoundPoolVolume()
     }
 
@@ -132,7 +131,7 @@ class SoundManager(private val context: Context) {
     }
 
     /**
-     * ✅ 更新 SoundPool 的音效音量
+     * 更新 SoundPool 的音效音量
      */
     private fun updateSoundPoolVolume() {
         currentSfxVolume = if (isMasterMuted || isSfxMuted) {
@@ -148,7 +147,6 @@ class SoundManager(private val context: Context) {
     fun playSFX(name: String) {
         val soundId = soundMap[name]
         if (soundId != null && soundId != 0) {
-            // ✅ 重新計算音量以確保使用最新值
             val finalVolume = if (isMasterMuted || isSfxMuted) {
                 0f
             } else {
@@ -159,12 +157,21 @@ class SoundManager(private val context: Context) {
     }
 
     /**
-     * 直接用資源 ID 播放聲音
+     * ✅ 新增：專用於遊戲打擊音效的播放方法
+     * - 使用 SoundPool 確保零延遲
+     * - 可同時播放多個音效
+     * - 適用於高頻率觸發場景
+     */
+    fun playHitSound() {
+        playSFX("hit")
+    }
+
+    /**
+     * 直接用資源 ID 播放聲音 (不建議用於高頻音效)
      */
     fun playSound(resId: Int) {
         try {
             val mp = MediaPlayer.create(context, resId)
-            // ✅ 重新計算音量以確保使用最新值
             val finalVolume = if (isMasterMuted || isSfxMuted) {
                 0f
             } else {
@@ -203,15 +210,12 @@ class SoundManager(private val context: Context) {
 
     /**
      * 播放背景音樂 (從 res/raw 資料夾,使用資源 ID)
-     * 如果正在播放相同的 BGM,不做處理
      */
     fun playBgm(resId: Int) {
-        // 如果正在播放相同的 BGM,不做處理
         if (currentBgmResId == resId && bgmPlayer?.isPlaying == true) {
             return
         }
 
-        // ✅ 如果是相同的 BGM 但已暫停，恢復播放
         if (currentBgmResId == resId && bgmPlayer != null) {
             bgmPlayer?.start()
             return
@@ -237,9 +241,6 @@ class SoundManager(private val context: Context) {
         }
     }
 
-    /**
-     * 停止背景音樂
-     */
     fun stopBgm() {
         bgmPlayer?.apply {
             if (isPlaying) stop()
@@ -251,23 +252,14 @@ class SoundManager(private val context: Context) {
         bgmPausePosition = 0
     }
 
-    /**
-     * 暫停背景音樂
-     */
     fun pauseBgm() {
         bgmPlayer?.pause()
     }
 
-    /**
-     * 恢復背景音樂
-     */
     fun resumeBgm() {
         bgmPlayer?.start()
     }
 
-    /**
-     * 停止關卡音樂
-     */
     fun stopMusic() {
         if (bgmPlayer?.isPlaying == true) {
             bgmPlayer?.stop()
@@ -276,9 +268,6 @@ class SoundManager(private val context: Context) {
         bgmPlayer = null
     }
 
-    /**
-     * ✅ 新增：暫停所有音樂 (當 App 進入後台時)
-     */
     fun pauseAllAudio() {
         bgmPlayer?.let { player ->
             try {
@@ -294,9 +283,6 @@ class SoundManager(private val context: Context) {
         }
     }
 
-    /**
-     * ✅ 新增：恢復所有音樂 (當 App 回到前台時)
-     */
     fun resumeAllAudio() {
         if (wasBgmPlayingBeforePause && bgmPlayer != null) {
             try {
@@ -307,7 +293,6 @@ class SoundManager(private val context: Context) {
                 wasBgmPlayingBeforePause = false
             } catch (e: Exception) {
                 e.printStackTrace()
-                // 如果恢復失敗，嘗試重新播放當前的 BGM
                 currentBgmResId?.let { resId ->
                     stopBgm()
                     playBgm(resId)
@@ -316,18 +301,12 @@ class SoundManager(private val context: Context) {
         }
     }
 
-    /**
-     * ✅ 新增：停止所有音樂 (當 App 被停止時)
-     */
     fun stopAllAudio() {
         stopBgm()
         wasBgmPlayingBeforePause = false
         bgmPausePosition = 0
     }
 
-    /**
-     * 釋放所有資源
-     */
     fun release() {
         stopBgm()
         soundPool.release()

@@ -34,9 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.AuthViewModel
-import com.soundinteractionapp.data.LeaderboardViewModel // ✅ 確保有 Import
 import com.soundinteractionapp.data.ProfileViewModel
-import com.soundinteractionapp.screens.components.LeaderboardDialog // ✅ 確保有 Import
 import kotlin.math.absoluteValue
 
 // =====================================================
@@ -50,17 +48,14 @@ fun GameHomeScreen(
     onNavigateToGame: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToLeaderboard: () -> Unit, // ✅ 新增：導航到排行榜畫面
     onLogout: () -> Unit,
-    authViewModel: AuthViewModel = viewModel(),
-    leaderboardViewModel: LeaderboardViewModel = viewModel() // ✅ 注入排行榜 ViewModel
+    authViewModel: AuthViewModel = viewModel()
 ) {
-    // ✅ 登出狀態控制
+    // 登出狀態控制
     var isLoggingOut by remember { mutableStateOf(false) }
 
-    // ✅ 排行榜顯示狀態控制
-    var showLeaderboard by remember { mutableStateOf(false) }
-
-    // ✅ 黑屏動畫（700ms 淡入）
+    // 黑屏動畫（700ms 淡入）
     val blackAlpha by animateFloatAsState(
         targetValue = if (isLoggingOut) 1f else 0f,
         animationSpec = tween(700),
@@ -73,7 +68,7 @@ fun GameHomeScreen(
 
     var currentIndex by remember { mutableStateOf(1) } // 預設顯示第二張卡片
 
-    // ✅ 定義卡片資料 (新增第 4 個：排行榜)
+    // 定義卡片資料 (包含排行榜)
     val modes = listOf(
         ModeData(
             title = "自由探索",
@@ -99,17 +94,16 @@ fun GameHomeScreen(
             color = Color(0xFFFF9800),
             onClick = onNavigateToGame
         ),
-        // ✅ 新增：排行榜卡片
         ModeData(
             title = "榮譽榜",
             subtitle = "排行榜",
             description = "查看大家的分數排行，挑戰最高榮譽",
-            iconResId = R.drawable.music_01, // 如果你有獎盃圖示，請換成 R.drawable.trophy
-            color = Color(0xFFFFD700),   // 金色
-            buttonText = "查看排行",      // ✅ 自訂按鈕文字
+            iconResId = R.drawable.music_01,
+            color = Color(0xFFFFD700),
+            buttonText = "查看排行",
             onClick = {
                 soundManager.playSFX("options2")
-                showLeaderboard = true // ✅ 點擊卡片時，打開排行榜 Dialog
+                onNavigateToLeaderboard() // ✅ 導航到排行榜畫面
             }
         )
     )
@@ -206,21 +200,13 @@ fun GameHomeScreen(
             }
         }
 
-        // ✅ 黑屏遮罩層（登出時淡入）
+        // 黑屏遮罩層（登出時淡入）
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = blackAlpha }
                 .background(Color.Black)
         )
-
-        // ✅ 排行榜 Dialog
-        if (showLeaderboard) {
-            LeaderboardDialog(
-                viewModel = leaderboardViewModel,
-                onDismiss = { showLeaderboard = false }
-            )
-        }
     }
 }
 
@@ -575,7 +561,6 @@ fun ModeCardSwiper(
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth().height(34.dp)
             ) {
-                // ✅ 使用 buttonText 顯示不同文字
                 Text(
                     mode.buttonText,
                     fontSize = 11.sp,
@@ -588,7 +573,7 @@ fun ModeCardSwiper(
 }
 
 // =====================================================
-// ✅ 新增 buttonText 參數
+// 📦 資料類別
 // =====================================================
 data class ModeData(
     val title: String,
@@ -596,6 +581,6 @@ data class ModeData(
     val description: String,
     val iconResId: Int,
     val color: Color,
-    val buttonText: String = "進入遊戲", // 預設為進入遊戲
+    val buttonText: String = "進入遊戲",
     val onClick: () -> Unit
 )

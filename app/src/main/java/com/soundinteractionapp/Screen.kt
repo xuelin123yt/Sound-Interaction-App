@@ -2,13 +2,13 @@ package com.soundinteractionapp
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
-    object Auth : Screen("auth")  // 这是你原来的登入欢迎页面（LoginScreen）
-    object Login : Screen("login")  // ✅ 新增：登入表单页面
-    object Register : Screen("register")  // ✅ 新增：注册页面
+    object Auth : Screen("auth")
+    object Login : Screen("login")
+    object Register : Screen("register")
     object GameHome : Screen("game_home")
     object Welcome : Screen("welcome")
     object Profile : Screen("profile")
-    object Settings : Screen("settings")  // ✅ 新增：設定頁面
+    object Settings : Screen("settings")
     object FreePlay : Screen("freeplay")
     object Relax : Screen("relax")
     object Game : Screen("game")
@@ -28,7 +28,8 @@ sealed class Screen(val route: String) {
     object GameLevel3 : Screen("game/level3")
     object GameLevel4 : Screen("game/level4")
 
-    ////////////////////////新增////////////////////////
     object GameMode : Screen("game_mode")
-    ////////////////////////新增////////////////////////
+
+    // ✅ 新增排行榜
+    object Leaderboard : Screen("leaderboard")
 }

@@ -298,10 +298,10 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
                 color = Color.Gray
             )
             Spacer(Modifier.height(8.dp))
-            ScoreRowItem("OSU_01", scores.level4Osu01, Color(0xFF9C27B0))
-            ScoreRowItem("OSU_02", scores.level4Osu02, Color(0xFF673AB7))
-            ScoreRowItem("OSU_03", scores.level4Osu03, Color(0xFF3F51B5))
-            ScoreRowItem("OSU_04", scores.level4Osu04, Color(0xFF2196F3))
+            ScoreRowItem("哆啦A夢 主題曲", scores.level4Osu01, Color(0xFF9C27B0))
+            ScoreRowItem("神魔之塔 主題曲（夜）", scores.level4Osu02, Color(0xFF673AB7))
+            ScoreRowItem("能看見海的街道", scores.level4Osu03, Color(0xFF3F51B5))
+            ScoreRowItem("伴隨著你 (純音樂版)", scores.level4Osu04, Color(0xFF2196F3))
 
             // 顯示關卡 4 總分
             Row(
