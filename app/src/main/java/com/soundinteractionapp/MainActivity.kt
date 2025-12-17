@@ -7,14 +7,11 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -36,12 +33,11 @@ import com.soundinteractionapp.screens.game.levels.*
 import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.data.AuthViewModel
 import com.soundinteractionapp.data.ProfileViewModel
-import com.soundinteractionapp.data.LeaderboardViewModel
+import com.soundinteractionapp.data.LeaderboardViewModel  // ✅ 新增這行
 import com.soundinteractionapp.screens.game.levels.level1.Level1FollowBeatScreen
 import com.soundinteractionapp.screens.game.levels.level2.Level2FollowBeatScreen
 import com.soundinteractionapp.screens.game.levels.level4.Level4Screen
 import com.soundinteractionapp.screens.settings.SettingScreen
-import com.soundinteractionapp.screens.settings.sections.applyResolutionScale
 
 class MainActivity : ComponentActivity() {
 
@@ -52,7 +48,7 @@ class MainActivity : ComponentActivity() {
     private val rankingViewModel by viewModels<RankingViewModel>()
     private val authViewModel by viewModels<AuthViewModel>()
     private val profileViewModel by viewModels<ProfileViewModel>()
-    private val leaderboardViewModel by viewModels<LeaderboardViewModel>()
+    private val leaderboardViewModel by viewModels<LeaderboardViewModel>()  // ✅ 新增這行
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,176 +80,171 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // ✅ 在最外層套用解析度縮放
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .applyResolutionScale()
-                ) {
-                    NavHost(navController = navController, startDestination = Screen.Splash.route) {
+                NavHost(navController = navController, startDestination = Screen.Splash.route) {
 
-                        composable(Screen.Splash.route) {
-                            SplashScreen(navController)
-                        }
+                    composable(Screen.Splash.route) {
+                        SplashScreen(navController)
+                    }
 
-                        composable(Screen.Welcome.route) {
-                            WelcomeScreen(
-                                soundManager = soundManager,
-                                onNavigateToFreePlay = {
-                                    navController.navigate(Screen.FreePlay.route)
-                                },
-                                onNavigateToRelax = {
-                                    navController.navigate(Screen.Relax.route)
-                                },
-                                onNavigateToGame = {
-                                    navController.navigate(Screen.Game.route)
-                                },
-                                onNavigateToProfile = {
-                                    navController.navigate(Screen.Profile.route)
-                                },
-                                onNavigateToSettings = {
-                                    navController.navigate(Screen.Settings.route)
-                                },
-                                onNavigateToLeaderboard = {
-                                    navController.navigate(Screen.Leaderboard.route)
-                                },
-                                onLogout = {
-                                    soundManager.stopBgm()
-                                    authViewModel.signOut()
-                                    navController.navigate(Screen.Splash.route) {
-                                        popUpTo(0) { inclusive = true }
-                                    }
-                                },
-                                authViewModel = authViewModel
-                            )
-                        }
-
-                        composable(Screen.Profile.route) {
-                            ProfileScreen(
-                                onNavigateBack = {
-                                    navController.popBackStack()
-                                },
-                                onLogout = {
-                                    soundManager.stopBgm()
-                                    authViewModel.signOut()
-                                    navController.navigate(Screen.Splash.route) {
-                                        popUpTo(0) { inclusive = true }
-                                    }
-                                },
-                                authViewModel = authViewModel,
-                                profileViewModel = profileViewModel,
-                                rankingViewModel = rankingViewModel,
-                                onNavigateToLogin = {
-                                    navController.navigate(Screen.Welcome.route) {
-                                        popUpTo(0) { inclusive = true }
-                                    }
+                    composable(Screen.Welcome.route) {
+                        WelcomeScreen(
+                            soundManager = soundManager,
+                            onNavigateToFreePlay = {
+                                navController.navigate(Screen.FreePlay.route)
+                            },
+                            onNavigateToRelax = {
+                                navController.navigate(Screen.Relax.route)
+                            },
+                            onNavigateToGame = {
+                                navController.navigate(Screen.Game.route)
+                            },
+                            onNavigateToProfile = {
+                                navController.navigate(Screen.Profile.route)
+                            },
+                            onNavigateToSettings = {
+                                navController.navigate(Screen.Settings.route)
+                            },
+                            onNavigateToLeaderboard = {  // ✅ 新增這段
+                                navController.navigate(Screen.Leaderboard.route)
+                            },
+                            onLogout = {
+                                soundManager.stopBgm()
+                                authViewModel.signOut()
+                                navController.navigate(Screen.Splash.route) {
+                                    popUpTo(0) { inclusive = true }
                                 }
-                            )
-                        }
+                            },
+                            authViewModel = authViewModel
+                        )
+                    }
 
-                        composable(Screen.Settings.route) {
-                            SettingScreen(
-                                soundManager = soundManager,
-                                onNavigateBack = { navController.popBackStack() },
-                                isLoggedIn = authViewModel.isLoggedIn() && !authViewModel.isAnonymous()
-                            )
-                        }
+                    composable(Screen.Profile.route) {
+                        ProfileScreen(
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onLogout = {
+                                soundManager.stopBgm()
+                                authViewModel.signOut()
+                                navController.navigate(Screen.Splash.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            },
+                            authViewModel = authViewModel,
+                            profileViewModel = profileViewModel,
+                            rankingViewModel = rankingViewModel,
+                            onNavigateToLogin = {
+                                navController.navigate(Screen.Welcome.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
 
-                        composable(Screen.Leaderboard.route) {
-                            LeaderboardScreen(
-                                navController = navController,
-                                viewModel = leaderboardViewModel
-                            )
-                        }
+                    composable(Screen.Settings.route) {
+                        SettingScreen(
+                            soundManager = soundManager,
+                            onNavigateBack = { navController.popBackStack() },
+                            isLoggedIn = authViewModel.isLoggedIn() && !authViewModel.isAnonymous()
+                        )
+                    }
 
-                        composable(Screen.FreePlay.route) {
-                            FreePlayScreenContent(
-                                { navController.popBackStack() }, soundManager,
-                                { navController.navigate(Screen.CatInteraction.route) },
-                                { navController.navigate(Screen.PianoInteraction.route) },
-                                { navController.navigate(Screen.DogInteraction.route) },
-                                { navController.navigate(Screen.BirdInteraction.route) },
-                                { navController.navigate(Screen.DrumInteraction.route) },
-                                { navController.navigate(Screen.BellInteraction.route) }
-                            )
-                        }
+                    // ======================== ✅ 排行榜路由 ========================
+                    composable(Screen.Leaderboard.route) {
+                        LeaderboardScreen(
+                            navController = navController,
+                            viewModel = leaderboardViewModel  // ✅ 使用 LeaderboardViewModel
+                        )
+                    }
+                    // ================================================================
 
-                        composable(Screen.Relax.route) {
-                            RelaxScreenContent(
-                                { navController.popBackStack() }, soundManager,
-                                { navController.navigate(Screen.OceanInteraction.route) },
-                                { navController.navigate(Screen.RainInteraction.route) },
-                                { navController.navigate(Screen.WindInteraction.route) }
-                            )
-                        }
+                    composable(Screen.FreePlay.route) {
+                        FreePlayScreenContent(
+                            { navController.popBackStack() }, soundManager,
+                            { navController.navigate(Screen.CatInteraction.route) },
+                            { navController.navigate(Screen.PianoInteraction.route) },
+                            { navController.navigate(Screen.DogInteraction.route) },
+                            { navController.navigate(Screen.BirdInteraction.route) },
+                            { navController.navigate(Screen.DrumInteraction.route) },
+                            { navController.navigate(Screen.BellInteraction.route) }
+                        )
+                    }
 
-                        composable(Screen.Game.route) {
-                            GameModeScreenContent(
-                                { navController.popBackStack() },
-                                { route -> navController.navigate(route) },
-                                rankingViewModel
-                            )
-                        }
+                    composable(Screen.Relax.route) {
+                        RelaxScreenContent(
+                            { navController.popBackStack() }, soundManager,
+                            { navController.navigate(Screen.OceanInteraction.route) },
+                            { navController.navigate(Screen.RainInteraction.route) },
+                            { navController.navigate(Screen.WindInteraction.route) }
+                        )
+                    }
 
-                        composable(Screen.GameLevel1.route) {
-                            Level1FollowBeatScreen(
-                                { navController.popBackStack() },
-                                soundManager,
-                                rankingViewModel
-                            )
-                        }
+                    composable(Screen.Game.route) {
+                        GameModeScreenContent(
+                            { navController.popBackStack() },
+                            { route -> navController.navigate(route) },
+                            rankingViewModel
+                        )
+                    }
 
-                        composable(Screen.GameLevel2.route) {
-                            Level2FollowBeatScreen(
-                                onNavigateBack = { navController.popBackStack() },
-                                soundManager = soundManager,
-                                rankingViewModel = rankingViewModel
-                            )
-                        }
+                    composable(Screen.GameLevel1.route) {
+                        Level1FollowBeatScreen(
+                            { navController.popBackStack() },
+                            soundManager,
+                            rankingViewModel
+                        )
+                    }
 
-                        composable(Screen.GameLevel3.route) {
-                            Level3PitchScreen(
-                                onNavigateBack = { navController.popBackStack() },
-                                rankingViewModel = rankingViewModel
-                            )
-                        }
+                    composable(Screen.GameLevel2.route) {
+                        Level2FollowBeatScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            soundManager = soundManager,
+                            rankingViewModel = rankingViewModel
+                        )
+                    }
 
-                        composable(Screen.GameLevel4.route) {
-                            Level4Screen(
-                                navController = navController,
-                                soundManager = soundManager
-                            )
-                        }
+                    composable(Screen.GameLevel3.route) {
+                        Level3PitchScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            rankingViewModel = rankingViewModel
+                        )
+                    }
 
-                        // Interactions
-                        composable(Screen.CatInteraction.route) {
-                            CatInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
-                        composable(Screen.PianoInteraction.route) {
-                            PianoInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
-                        composable(Screen.DogInteraction.route) {
-                            DogInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
-                        composable(Screen.BirdInteraction.route) {
-                            BirdInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
-                        composable(Screen.DrumInteraction.route) {
-                            DrumInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
-                        composable(Screen.BellInteraction.route) {
-                            BellInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
+                    composable(Screen.GameLevel4.route) {
+                        Level4Screen(
+                            navController = navController,
+                            soundManager = soundManager
+                        )
+                    }
 
-                        composable(Screen.OceanInteraction.route) {
-                            OceanInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
-                        composable(Screen.RainInteraction.route) {
-                            RainInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
-                        composable(Screen.WindInteraction.route) {
-                            WindInteractionScreen({ navController.popBackStack() }, soundManager)
-                        }
+                    // Interactions
+                    composable(Screen.CatInteraction.route) {
+                        CatInteractionScreen({ navController.popBackStack() }, soundManager)
+                    }
+                    composable(Screen.PianoInteraction.route) {
+                        PianoInteractionScreen({ navController.popBackStack() }, soundManager)
+                    }
+                    composable(Screen.DogInteraction.route) {
+                        DogInteractionScreen({ navController.popBackStack() }, soundManager)
+                    }
+                    composable(Screen.BirdInteraction.route) {
+                        BirdInteractionScreen({ navController.popBackStack() }, soundManager)
+                    }
+                    composable(Screen.DrumInteraction.route) {
+                        DrumInteractionScreen({ navController.popBackStack() }, soundManager)
+                    }
+                    composable(Screen.BellInteraction.route) {
+                        BellInteractionScreen({ navController.popBackStack() }, soundManager)
+                    }
+
+                    composable(Screen.OceanInteraction.route) {
+                        OceanInteractionScreen({ navController.popBackStack() }, soundManager)
+                    }
+                    composable(Screen.RainInteraction.route) {
+                        RainInteractionScreen({ navController.popBackStack() }, soundManager)
+                    }
+                    composable(Screen.WindInteraction.route) {
+                        WindInteractionScreen({ navController.popBackStack() }, soundManager)
                     }
                 }
             }

@@ -5,7 +5,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -174,56 +176,80 @@ fun GameInstructionsButton(
 }
 
 /**
- * 玩法說明對話框
+ * 玩法說明對話框 - 內容區域最大化
  */
 @Composable
 fun GameInstructionsDialog(onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.8f),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color(0xFF1A1A2E)
             )
         ) {
             Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth()
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    text = "🎮 遊戲玩法",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF64D8FF),
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                // 標題 - 加大呼吸空間
+                Column {
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                InstructionItem(
-                    number = "1",
-                    title = "選擇歌曲",
-                    description = "從左側列表選擇你想要挑戰的歌曲"
-                )
+                    Text(
+                        text = "🎮 遊戲玩法",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF64D8FF),
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
 
-                InstructionItem(
-                    number = "2",
-                    title = "跟隨節奏",
-                    description = "音符會從上方落下，在正確時機點擊對應按鈕"
-                )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                InstructionItem(
-                    number = "3",
-                    title = "獲得分數",
-                    description = "Perfect > Great > Good > Miss，盡可能打出完美節奏！"
-                )
+                    Divider(
+                        color = Color(0xFF64D8FF).copy(alpha = 0.3f),
+                        thickness = 1.dp,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
+                // 內容區域 - 佔最大空間
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    InstructionItem(
+                        number = "1",
+                        title = "選擇歌曲",
+                        description = "從左側列表選擇你想要挑戰的歌曲"
+                    )
+
+                    InstructionItem(
+                        number = "2",
+                        title = "跟隨節奏",
+                        description = "音符會從上方落下，在正確時機點擊對應按鈕"
+                    )
+
+                    InstructionItem(
+                        number = "3",
+                        title = "獲得分數",
+                        description = "Perfect > Great > Good > Miss，盡可能打出完美節奏！"
+                    )
+                }
+
+                // 按鈕 - 極限壓縮
                 Button(
                     onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .height(40.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF64D8FF)
                     ),
@@ -231,10 +257,9 @@ fun GameInstructionsDialog(onDismiss: () -> Unit) {
                 ) {
                     Text(
                         text = "我知道了",
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        color = Color.White
                     )
                 }
             }
@@ -242,48 +267,44 @@ fun GameInstructionsDialog(onDismiss: () -> Unit) {
     }
 }
 
-/**
- * 說明項目
- */
+// 同時修改 InstructionItem，讓它超級緊湊：
 @Composable
 fun InstructionItem(number: String, title: String, description: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(26.dp)
                 .background(
                     Color(0xFF64D8FF).copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(5.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = number,
-                fontSize = 16.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF64D8FF)
             )
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         Column {
             Text(
                 text = title,
-                fontSize = 16.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
             Text(
                 text = description,
-                fontSize = 13.sp,
+                fontSize = 11.sp,
                 color = Color.White.copy(alpha = 0.7f),
-                lineHeight = 18.sp
+                lineHeight = 13.sp
             )
         }
     }
