@@ -197,32 +197,38 @@ fun FreePlayScreenContent(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(400.dp),
-                    contentPadding = PaddingValues(horizontal = 32.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    itemsIndexed(menuItems) { index, item ->
-                        TaikoMenuItemCard(
-                            item = item,
-                            isSelected = selectedIndex == index,
-                            onClick = {
-                                if (selectedIndex == index) {
-                                    // 點擊已選中項目 -> 進入互動
-                                    if (!isNavigating) {
-                                        isNavigating = true
-                                        item.onNavigate()
+                    LazyRow(
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .height(400.dp),
+                        contentPadding = PaddingValues(horizontal = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        itemsIndexed(menuItems) { index, item ->
+                            TaikoMenuItemCard(
+                                item = item,
+                                isSelected = selectedIndex == index,
+                                onClick = {
+                                    if (selectedIndex == index) {
+                                        // 點擊已選中項目 -> 進入互動
+                                        if (!isNavigating) {
+                                            isNavigating = true
+                                            item.onNavigate()
+                                        }
+                                    } else {
+                                        // 點擊其他項目 -> 展開
+                                        soundManager.playSFX("options2")
+                                        selectedIndex = index
                                     }
-                                } else {
-                                    // 點擊其他項目 -> 展開
-                                    soundManager.playSFX("options2")
-                                    selectedIndex = index
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
