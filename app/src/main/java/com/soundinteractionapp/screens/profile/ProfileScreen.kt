@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.soundinteractionapp.R
+import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.AuthViewModel
 import com.soundinteractionapp.data.ProfileViewModel
 import com.soundinteractionapp.data.RankingViewModel
@@ -33,6 +34,7 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onLogout: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
+    soundManager: SoundManager,
     authViewModel: AuthViewModel = viewModel(),
     profileViewModel: ProfileViewModel = viewModel(),
     rankingViewModel: RankingViewModel = viewModel()
@@ -74,11 +76,11 @@ fun ProfileScreen(
             TopAppBar(
                 title = { Text("個人資料", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    // ✅ 加入防抖
                     IconButton(
                         onClick = {
                             if (isNavigating) return@IconButton
                             isNavigating = true
+                            soundManager.playSFX("cancel")
                             onNavigateBack()
                         },
                         enabled = !isNavigating

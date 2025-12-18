@@ -48,7 +48,7 @@ fun GameHomeScreen(
     onNavigateToGame: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToLeaderboard: () -> Unit, // ✅ 新增：導航到排行榜畫面
+    onNavigateToLeaderboard: () -> Unit,
     onLogout: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
@@ -66,7 +66,7 @@ fun GameHomeScreen(
         }
     )
 
-    var currentIndex by remember { mutableStateOf(1) } // 預設顯示第二張卡片
+    var currentIndex by remember { mutableStateOf(0) } // 改為 0，預設顯示第一張卡片（模式一）
 
     // 定義卡片資料 (包含排行榜)
     val modes = listOf(
@@ -76,7 +76,10 @@ fun GameHomeScreen(
             description = "自由觸碰螢幕,探索各種聲音與互動",
             iconResId = R.drawable.music_01,
             color = Color(0xFF8C7AE6),
-            onClick = onNavigateToFreePlay
+            onClick = {
+                soundManager.playSFX("options3")
+                onNavigateToFreePlay()
+            }
         ),
         ModeData(
             title = "放鬆時光",
@@ -84,7 +87,10 @@ fun GameHomeScreen(
             description = "聆聽舒緩音樂,放鬆身心享受時光",
             iconResId = R.drawable.music_02,
             color = Color(0xFF4FC3F7),
-            onClick = onNavigateToRelax
+            onClick = {
+                soundManager.playSFX("options3")
+                onNavigateToRelax()
+            }
         ),
         ModeData(
             title = "音樂遊戲",
@@ -92,7 +98,10 @@ fun GameHomeScreen(
             description = "跟著節奏玩遊戲,訓練反應能力",
             iconResId = R.drawable.music_03,
             color = Color(0xFFFF9800),
-            onClick = onNavigateToGame
+            onClick = {
+                soundManager.playSFX("options3")
+                onNavigateToGame()
+            }
         ),
         ModeData(
             title = "榮譽榜",
@@ -102,8 +111,8 @@ fun GameHomeScreen(
             color = Color(0xFFFFD700),
             buttonText = "查看排行",
             onClick = {
-                soundManager.playSFX("options2")
-                onNavigateToLeaderboard() // ✅ 導航到排行榜畫面
+                soundManager.playSFX("options3")
+                onNavigateToLeaderboard()
             }
         )
     )

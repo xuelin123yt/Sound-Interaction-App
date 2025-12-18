@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.soundinteractionapp.R
+import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.LeaderboardViewModel
 import com.soundinteractionapp.data.LeaderboardItem
 import kotlinx.coroutines.launch
@@ -42,6 +43,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LeaderboardScreen(
     navController: NavController,
+    soundManager: SoundManager,
     viewModel: LeaderboardViewModel = viewModel()
 ) {
     var isNavigating by remember { mutableStateOf(false) }
@@ -83,6 +85,7 @@ fun LeaderboardScreen(
                     onClick = {
                         if (isNavigating) return@IconButton
                         isNavigating = true
+                        soundManager.playSFX("cancel")
                         navController.navigateUp()
                     },
                     modifier = Modifier
@@ -136,7 +139,10 @@ fun LeaderboardScreen(
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = pagerState.currentPage == index,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        onClick = {
+                            soundManager.playSFX("options")
+                            scope.launch { pagerState.animateScrollToPage(index) }
+                        },
                         text = {
                             Text(
                                 title,

@@ -88,7 +88,9 @@ class SoundManager(private val context: Context) {
             loadSound("miss", R.raw.sfx_miss)
             loadSound("settings", R.raw.settings)
             loadSound("cancel", R.raw.cancel)
+            loadSound("options", R.raw.options)
             loadSound("options2", R.raw.options2)
+            loadSound("options3", R.raw.options3)
 
             // ✅ 新增：預載遊戲打擊音效
             loadSound("hit", R.raw.osu_hit_sound)

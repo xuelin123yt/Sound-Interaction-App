@@ -1,12 +1,16 @@
 package com.soundinteractionapp.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -15,33 +19,50 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
-import kotlin.math.absoluteValue
 
 // =====================================================
-// 📦 資料結構
+// 📦 資料模型
 // =====================================================
-data class FreePlayItem(
+data class TaikoMenuItem(
     val id: Int,
-    val title: String,
-    val subtitle: String,
-    val emoji: String,
-    val color: Color,
+    val categoryName: String,
+    val icon: String,
+    val primaryColor: Color,
+    val secondaryColor: Color,
+    val description: String,
     val soundResId: Int,
     val onNavigate: () -> Unit
 )
 
 // =====================================================
-// 🎮 自由探索模式主畫面（修復版）
+// 🎨 文字描邊效果
+// =====================================================
+fun textStrokeStyle(fontSize: androidx.compose.ui.unit.TextUnit, fontWeight: FontWeight = FontWeight.Normal): TextStyle {
+    return TextStyle(
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        shadow = Shadow(
+            color = Color.Black,
+            offset = Offset(3f, 3f),
+            blurRadius = 1f
+        )
+    )
+}
+
+// =====================================================
+// 🎮 自由探索模式主畫面（太鼓風格）
 // =====================================================
 @Composable
 fun FreePlayScreenContent(
@@ -54,28 +75,83 @@ fun FreePlayScreenContent(
     onNavigateToDrumInteraction: () -> Unit,
     onNavigateToBellInteraction: () -> Unit
 ) {
-    // 🔥 防止快速點擊導致白屏
     var isNavigating by remember { mutableStateOf(false) }
 
-    // 定義資料
-    val items = listOf(
-        FreePlayItem(0, "貓咪", "可愛的喵喵聲", "🐾", Color(0xFFFFCC80), R.raw.cat_meow, onNavigateToCatInteraction),
-        FreePlayItem(1, "狗狗", "忠誠的汪汪聲", "🐕", Color(0xFFA1887F), R.raw.dog_barking, onNavigateToDogInteraction),
-        FreePlayItem(2, "鳥兒", "清脆的啾啾聲", "🐦", Color(0xFF81D4FA), R.raw.bird_sound, onNavigateToBirdInteraction),
-        FreePlayItem(3, "鋼琴", "優美的琴聲", "🎹", Color(0xFF9FA8DA), R.raw.piano_c1, onNavigateToPianoInteraction),
-        FreePlayItem(4, "爵士鼓", "動感的節奏", "🥁", Color(0xFFEF9A9A), R.raw.drum_cymbal_closed, onNavigateToDrumInteraction),
-        FreePlayItem(5, "鈴鐺", "響亮的叮噹聲", "🔔", Color(0xFFFFF59D), R.raw.desk_bell, onNavigateToBellInteraction)
-    )
+    val menuItems = remember {
+        listOf(
+            TaikoMenuItem(
+                id = 0,
+                categoryName = "貓咪",
+                icon = "🐾",
+                primaryColor = Color(0xFFFFCC80),
+                secondaryColor = Color(0xFFFFE0B2),
+                description = "可愛的喵喵聲",
+                soundResId = R.raw.cat_meow,
+                onNavigate = onNavigateToCatInteraction
+            ),
+            TaikoMenuItem(
+                id = 1,
+                categoryName = "狗狗",
+                icon = "🐕",
+                primaryColor = Color(0xFFA1887F),
+                secondaryColor = Color(0xFFBCAAA4),
+                description = "忠誠的汪汪聲",
+                soundResId = R.raw.dog_barking,
+                onNavigate = onNavigateToDogInteraction
+            ),
+            TaikoMenuItem(
+                id = 2,
+                categoryName = "鳥兒",
+                icon = "🐦",
+                primaryColor = Color(0xFF81D4FA),
+                secondaryColor = Color(0xFFB3E5FC),
+                description = "清脆的啾啾聲",
+                soundResId = R.raw.bird_sound,
+                onNavigate = onNavigateToBirdInteraction
+            ),
+            TaikoMenuItem(
+                id = 3,
+                categoryName = "鋼琴",
+                icon = "🎹",
+                primaryColor = Color(0xFF9FA8DA),
+                secondaryColor = Color(0xFFC5CAE9),
+                description = "優美的琴聲",
+                soundResId = R.raw.piano_c1,
+                onNavigate = onNavigateToPianoInteraction
+            ),
+            TaikoMenuItem(
+                id = 4,
+                categoryName = "爵士鼓",
+                icon = "🥁",
+                primaryColor = Color(0xFFEF9A9A),
+                secondaryColor = Color(0xFFFFCDD2),
+                description = "動感的節奏",
+                soundResId = R.raw.drum_cymbal_closed,
+                onNavigate = onNavigateToDrumInteraction
+            ),
+            TaikoMenuItem(
+                id = 5,
+                categoryName = "鈴鐺",
+                icon = "🔔",
+                primaryColor = Color(0xFFFFF59D),
+                secondaryColor = Color(0xFFFFF9C4),
+                description = "響亮的叮噹聲",
+                soundResId = R.raw.desk_bell,
+                onNavigate = onNavigateToBellInteraction
+            )
+        )
+    }
 
-    var currentIndex by remember { mutableStateOf(0) }
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        color = Color(0xFFFFF5E6)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-
-            // 1. 頂部導航列
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // 頂部導航列
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -87,13 +163,12 @@ fun FreePlayScreenContent(
                     onClick = {
                         if (isNavigating) return@Button
                         isNavigating = true
-                        soundManager.playSound(R.raw.cancel)
+                        soundManager.playSFX("cancel")
                         onNavigateBack()
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                        disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                        containerColor = Color(0xFFD32F2F),
+                        disabledContainerColor = Color(0xFFD32F2F).copy(alpha = 0.7f)
                     ),
                     modifier = Modifier.height(50.dp),
                     shape = RoundedCornerShape(12.dp),
@@ -105,32 +180,65 @@ fun FreePlayScreenContent(
                 }
 
                 Text(
-                    "自由探索模式",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
+                    "🥁 自由探索模式 🥁",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFFD32F2F),
+                    letterSpacing = 1.sp
                 )
 
                 Spacer(modifier = Modifier.width(100.dp))
             }
 
-            // 2. 垂直滾動區域
+            // 橫向選單區域
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                VerticalFreePlayCarousel(
-                    soundManager = soundManager,
-                    items = items,
-                    currentIndex = currentIndex,
-                    onIndexChange = { currentIndex = it },
-                    onItemClick = { item ->
-                        if (isNavigating) return@VerticalFreePlayCarousel
-                        soundManager.playSound(item.soundResId)
-                        item.onNavigate()
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp),
+                    contentPadding = PaddingValues(horizontal = 32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    itemsIndexed(menuItems) { index, item ->
+                        TaikoMenuItemCard(
+                            item = item,
+                            isSelected = selectedIndex == index,
+                            onClick = {
+                                if (selectedIndex == index) {
+                                    // 點擊已選中項目 -> 進入互動
+                                    if (!isNavigating) {
+                                        isNavigating = true
+                                        item.onNavigate()
+                                    }
+                                } else {
+                                    // 點擊其他項目 -> 展開
+                                    soundManager.playSFX("options2")
+                                    selectedIndex = index
+                                }
+                            }
+                        )
                     }
+                }
+            }
+
+            // 提示文字
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (selectedIndex != null) "再次點擊進入互動" else "點擊項目展開詳細資訊",
+                    fontSize = 16.sp,
+                    color = Color(0xFF666666),
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
@@ -138,154 +246,128 @@ fun FreePlayScreenContent(
 }
 
 // =====================================================
-// ↕️ 垂直輪播邏輯
+// 🎴 單一選單項目卡片
 // =====================================================
 @Composable
-fun VerticalFreePlayCarousel(
-    soundManager: SoundManager,
-    items: List<FreePlayItem>,
-    currentIndex: Int,
-    onIndexChange: (Int) -> Unit,
-    onItemClick: (FreePlayItem) -> Unit
+fun TaikoMenuItemCard(
+    item: TaikoMenuItem,
+    isSelected: Boolean,
+    onClick: () -> Unit
 ) {
-    var offsetY by remember { mutableStateOf(0f) }
-    var isAnimating by remember { mutableStateOf(false) }
+    val width by animateDpAsState(
+        targetValue = if (isSelected) 280.dp else 120.dp,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        ),
+        label = "width"
+    )
 
-    val animatedOffset by animateFloatAsState(
-        targetValue = offsetY,
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
-        finishedListener = { isAnimating = false }
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.05f else 1f,
+        animationSpec = tween(300),
+        label = "scale"
     )
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(currentIndex) {
-                detectVerticalDragGestures(
-                    onDragEnd = {
-                        if (!isAnimating) {
-                            if (offsetY < -100 && currentIndex < items.size - 1) {
-                                isAnimating = true
-                                soundManager.playSound(R.raw.options2)
-                                onIndexChange(currentIndex + 1)
-                            } else if (offsetY > 100 && currentIndex > 0) {
-                                isAnimating = true
-                                soundManager.playSound(R.raw.options2)
-                                onIndexChange(currentIndex - 1)
-                            }
-                            offsetY = 0f
-                        }
-                    },
-                    onVerticalDrag = { _, dragAmount ->
-                        if (!isAnimating) {
-                            offsetY = (offsetY + dragAmount * 0.7f).coerceIn(-300f, 300f)
-                        }
-                    }
+            .width(width)
+            .height(400.dp)
+            .scale(scale)
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        item.primaryColor,
+                        item.secondaryColor
+                    )
                 )
-            },
-        contentAlignment = Alignment.Center
+            )
+            .border(
+                width = 4.dp,
+                color = if (isSelected) Color.White else Color.Transparent,
+                shape = RoundedCornerShape(24.dp)
+            )
+            .clickable(
+                onClick = onClick,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            )
     ) {
-        items.forEachIndexed { index, item ->
-            val indexOffset = index - currentIndex
-            if (indexOffset in -2..2) {
-                FreePlayCard(
-                    item = item,
-                    offset = indexOffset,
-                    dragOffset = animatedOffset,
-                    isCenter = indexOffset == 0,
-                    onClick = { onItemClick(item) }
-                )
-            }
+        if (isSelected) {
+            ExpandedContent(item)
+        } else {
+            CollapsedContent(item)
         }
     }
 }
 
 // =====================================================
-// 🃏 單張卡片 UI
+// 📖 展開狀態內容
 // =====================================================
 @Composable
-fun FreePlayCard(
-    item: FreePlayItem,
-    offset: Int,
-    dragOffset: Float,
-    isCenter: Boolean,
-    onClick: () -> Unit
-) {
-    val spacing = 260f
-    val translationY = offset * spacing + dragOffset
-    val scale by animateFloatAsState(if (isCenter) 1f else 0.85f, tween(300))
-    val alpha = (1f - (offset.absoluteValue * 0.4f)).coerceIn(0f, 1f)
-
-    Card(
+fun ExpandedContent(item: TaikoMenuItem) {
+    Column(
         modifier = Modifier
-            .width(280.dp)
-            .height(200.dp)
-            .zIndex(-offset.absoluteValue.toFloat())
-            .graphicsLayer {
-                this.translationY = translationY
-                this.scaleX = scale
-                this.scaleY = scale
-                this.alpha = alpha
-                this.rotationX = (translationY / 20f).coerceIn(-10f, 10f) * -1
-                this.cameraDistance = 12 * density
-            },
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(if (isCenter) 10.dp else 2.dp)
+            .fillMaxSize()
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Text(
+            text = item.icon,
+            fontSize = 80.sp
+        )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(item.color.copy(0.3f), item.color.copy(0.1f))
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = item.emoji,
-                    fontSize = 40.sp
-                )
-            }
+            Text(
+                text = item.categoryName,
+                style = textStrokeStyle(26.sp, FontWeight.Bold),
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
 
-            Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-                Text(
-                    text = item.subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
+            Text(
+                text = item.description,
+                style = textStrokeStyle(15.sp),
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+        }
+    }
+}
 
-                Spacer(modifier = Modifier.height(16.dp))
+// =====================================================
+// 📝 收合狀態內容
+// =====================================================
+@Composable
+fun CollapsedContent(item: TaikoMenuItem) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = item.icon,
+            fontSize = 48.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
 
-                Button(
-                    onClick = { if (isCenter) onClick() },
-                    enabled = isCenter,
-                    colors = ButtonDefaults.buttonColors(containerColor = item.color),
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier.fillMaxWidth().height(40.dp)
-                ) {
-                    Text("進入互動", color = Color.Black)
-                }
-            }
+        item.categoryName.forEach { char ->
+            Text(
+                text = char.toString(),
+                style = textStrokeStyle(20.sp, FontWeight.Bold),
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 2.dp)
+            )
         }
     }
 }

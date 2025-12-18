@@ -257,6 +257,7 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(0) { inclusive = true }
                                 }
                             },
+                            soundManager = soundManager,  // 加入這行
                             authViewModel = authViewModel,
                             profileViewModel = profileViewModel,
                             rankingViewModel = rankingViewModel,
@@ -286,6 +287,7 @@ class MainActivity : ComponentActivity() {
                         Log.d(TAG, "Composing: Leaderboard")
                         LeaderboardScreen(
                             navController = navController,
+                            soundManager = soundManager,
                             viewModel = leaderboardViewModel
                         )
                     }
@@ -328,7 +330,8 @@ class MainActivity : ComponentActivity() {
                                 Log.d(TAG, "Game: Navigate to $route")
                                 navController.navigate(route)
                             },
-                            rankingViewModel
+                            rankingViewModel = rankingViewModel,
+                            soundManager = soundManager  // 🔥 新增這個參數
                         )
                     }
 
