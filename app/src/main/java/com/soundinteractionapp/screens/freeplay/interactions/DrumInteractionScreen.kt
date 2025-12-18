@@ -43,64 +43,32 @@ data class DrumComponentData(
  */
 @Composable
 fun DrumInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
+    var isNavigating by remember { mutableStateOf(false) }
 
-    // 鼓組件音源列表 (使用您的 MP3 檔案名稱)
     val drumSounds = remember {
         listOf(
-            R.raw.drum_cymbal_closed, // 0. Hi-Hat (腳踏鈸)
-            R.raw.drum_snare_hard,    // 1. Snare (小鼓)
-            R.raw.drum_bass_hard,     // 2. Kick Drum (大鼓)
-            R.raw.drum_tom_lo_soft,   // 3. Floor Tom (落地鼓)
-            R.raw.drum_tom_hi_hard,   // 4. Rack Tom 1 (高音 Tom)
-            R.raw.drum_tom_mid_soft,  // 5. Rack Tom 2 (中音 Tom)
-            R.raw.drum_cymbal_hard,   // 6. Ride Cymbal (疊音鈸)
-            R.raw.drum_cymbal_hard    // 7. Crash Cymbal (左上墜擊鈸)
+            R.raw.drum_cymbal_closed, R.raw.drum_snare_hard, R.raw.drum_bass_hard,
+            R.raw.drum_tom_lo_soft, R.raw.drum_tom_hi_hard, R.raw.drum_tom_mid_soft,
+            R.raw.drum_cymbal_hard, R.raw.drum_cymbal_hard
         )
     }
 
-    // 鼓組件 UI 數據 - [使用您提供的精確位置數據]
     val drumComponents = remember {
         listOf(
-            // 0. Hi-Hat Cymbal (左上角的鈸 - 調整位置和尺寸以匹配側視圖)
-            DrumComponentData(name = "Hi-Hat", soundResId = drumSounds[0],
-                sizeW = 150.dp, sizeH = 110.dp, offsetX = 15.dp, offsetY = 120.dp),
-
-            // 1. Snare Drum (左前方的小鼓)
-            DrumComponentData(name = "Snare", soundResId = drumSounds[1],
-                sizeW = 120.dp, sizeH = 120.dp, offsetX = 170.dp, offsetY = 170.dp),
-
-            // 2. Rack Tom 1 (後排左邊的 Tom)
-            DrumComponentData(name = "Tom 1", soundResId = drumSounds[4],
-                sizeW = 100.dp, sizeH = 90.dp, offsetX = 210.dp, offsetY = 70.dp),
-
-            // 3. Rack Tom 2 (後排右邊的 Tom)
-            DrumComponentData(name = "Tom 2", soundResId = drumSounds[5],
-                sizeW = 100.dp, sizeH = 90.dp, offsetX = 330.dp, offsetY = 70.dp),
-
-            // 4. Ride Cymbal (右上角的鈸)
-            DrumComponentData(name = "Ride", soundResId = drumSounds[6],
-                sizeW = 200.dp, sizeH = 150.dp, offsetX = 440.dp, offsetY = 20.dp),
-
-            // 5. Floor Tom (右下方的落地鼓)
-            DrumComponentData(name = "Floor Tom", soundResId = drumSounds[3],
-                sizeW = 150.dp, sizeH = 120.dp, offsetX = 390.dp, offsetY = 180.dp),
-
-            // 6. Kick Drum (中間的大鼓,底部點擊區)
-            DrumComponentData(name = "Kick", soundResId = drumSounds[2],
-                sizeW = 110.dp, sizeH = 120.dp, offsetX = 290.dp, offsetY = 200.dp),
-
-            // 7. Crash Cymbal (左上方的墜擊鈸,新增的第 8 個組件)
-            DrumComponentData(name = "Crash Cymbal", soundResId = drumSounds[7],
-                sizeW = 180.dp, sizeH = 130.dp, offsetX = 100.dp, offsetY = 20.dp)
+            DrumComponentData("Hi-Hat", drumSounds[0], 150.dp, 110.dp, 15.dp, 120.dp),
+            DrumComponentData("Snare", drumSounds[1], 120.dp, 120.dp, 170.dp, 170.dp),
+            DrumComponentData("Tom 1", drumSounds[4], 100.dp, 90.dp, 210.dp, 70.dp),
+            DrumComponentData("Tom 2", drumSounds[5], 100.dp, 90.dp, 330.dp, 70.dp),
+            DrumComponentData("Ride", drumSounds[6], 200.dp, 150.dp, 440.dp, 20.dp),
+            DrumComponentData("Floor Tom", drumSounds[3], 150.dp, 120.dp, 390.dp, 180.dp),
+            DrumComponentData("Kick", drumSounds[2], 110.dp, 120.dp, 290.dp, 200.dp),
+            DrumComponentData("Crash Cymbal", drumSounds[7], 180.dp, 130.dp, 100.dp, 20.dp)
         )
     }
 
-    // 狀態：追蹤哪個鼓組件被敲擊 (用於視覺回饋)
     var tappedDrumId by remember { mutableStateOf<Int?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-
-        // 1. 背景圖片 (Drum Kit Image)
         Image(
             painter = painterResource(id = R.drawable.drum_background),
             contentDescription = "爵士鼓背景",
@@ -108,7 +76,6 @@ fun DrumInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. 8 個鼓組件的可點擊區域 (Drum Pads)
         drumComponents.forEachIndexed { index, data ->
             DrumPad(
                 id = index,
@@ -119,27 +86,32 @@ fun DrumInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager
             )
         }
 
-        // 3. 頂部返回按鈕
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.Start
         ) {
             Button(
-                onClick = onNavigateBack,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.height(50.dp)
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                ),
+                modifier = Modifier.height(50.dp),
+                enabled = !isNavigating
             ) {
                 Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
 
-    // 視覺回饋重置：在短暫延遲後清除視覺效果
     LaunchedEffect(tappedDrumId) {
         if (tappedDrumId != null) {
-            delay(150) // 視覺效果持續 150ms
+            delay(150)
             tappedDrumId = null
         }
     }

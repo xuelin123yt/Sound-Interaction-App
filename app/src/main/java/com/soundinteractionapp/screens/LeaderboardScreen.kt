@@ -44,11 +44,12 @@ fun LeaderboardScreen(
     navController: NavController,
     viewModel: LeaderboardViewModel = viewModel()
 ) {
+    var isNavigating by remember { mutableStateOf(false) }
+
     val tabs = listOf("總排行榜", "關卡一", "關卡二", "關卡三", "關卡四")
     val pagerState = rememberPagerState(pageCount = { 5 })
     val scope = rememberCoroutineScope()
 
-    // 使用 LeaderboardViewModel 的數據
     val totalList by viewModel.totalRank.collectAsState()
     val level1List by viewModel.level1Rank.collectAsState()
     val level2List by viewModel.level2Rank.collectAsState()
@@ -56,7 +57,6 @@ fun LeaderboardScreen(
     val level4List by viewModel.level4Rank.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    // 載入所有排行榜資料
     LaunchedEffect(Unit) {
         viewModel.loadAllLeaderboards()
     }
@@ -69,7 +69,6 @@ fun LeaderboardScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 頂部紫色區域
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -80,22 +79,25 @@ fun LeaderboardScreen(
                     )
                     .padding(vertical = 12.dp)
             ) {
-                // 返回按鈕
                 IconButton(
-                    onClick = { navController.navigateUp() },
+                    onClick = {
+                        if (isNavigating) return@IconButton
+                        isNavigating = true
+                        navController.navigateUp()
+                    },
                     modifier = Modifier
                         .align(Alignment.CenterStart)
-                        .padding(start = 4.dp)
+                        .padding(start = 4.dp),
+                    enabled = !isNavigating
                 ) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
                         contentDescription = "返回",
-                        tint = Color.White,
+                        tint = if (!isNavigating) Color.White else Color.White.copy(alpha = 0.5f),
                         modifier = Modifier.size(24.dp)
                     )
                 }
 
-                // 中央標題
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
@@ -119,7 +121,6 @@ fun LeaderboardScreen(
                 }
             }
 
-            // Tabs
             TabRow(
                 selectedTabIndex = pagerState.currentPage,
                 containerColor = Color.White,
@@ -148,7 +149,6 @@ fun LeaderboardScreen(
                 }
             }
 
-            // 列表區域
             Box(
                 modifier = Modifier
                     .weight(1f)

@@ -4,10 +4,10 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border // ✅ 補上這個 Import
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape // ✅ 補上這個 Import
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,7 +40,6 @@ import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.utils.GameInputManager
 import com.soundinteractionapp.GameProgressManager
 import com.soundinteractionapp.utils.GameScoreUtils
-// 確保正確 Import 您的譜面定義
 import com.soundinteractionapp.screens.game.levels.level1.Level1Charts
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -49,7 +48,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-// 遊戲狀態
 enum class GameState { SELECTION, COUNTDOWN, PLAYING, FINISHED, RESULT }
 
 @Composable
@@ -63,7 +61,9 @@ fun Level1FollowBeatScreen(
     val auth = FirebaseAuth.getInstance()
     val isGuest = auth.currentUser?.isAnonymous == true
 
-    // 載入圖片資源
+    // ✅ 防抖狀態
+    var isNavigating by remember { mutableStateOf(false) }
+
     val charIdle = ImageBitmap.imageResource(id = R.drawable.character_1)
     val charHit = ImageBitmap.imageResource(id = R.drawable.character_2)
     val hitEffectsIds = remember {
@@ -72,10 +72,8 @@ fun Level1FollowBeatScreen(
             R.drawable.hit_feedback_4, R.drawable.hit_feedback_5, R.drawable.hit_feedback_6
         )
     }
-    // 這裡修正 ImageBitmap 載入方式，確保 context 正確
     val hitEffectBitmaps = hitEffectsIds.map { ImageBitmap.imageResource(context.resources, it) }
 
-    // 狀態管理
     var gameState by remember { mutableStateOf(GameState.SELECTION) }
     var selectedDifficulty by remember { mutableStateOf(Difficulty.EASY) }
 
@@ -84,19 +82,16 @@ fun Level1FollowBeatScreen(
     var feedbackText by remember { mutableStateOf("") }
     var countdownValue by remember { mutableIntStateOf(3) }
 
-    // 視覺狀態
     var isCharacterStriking by remember { mutableStateOf(false) }
     var characterAnimJob: Job? by remember { mutableStateOf(null) }
     var currentEffectFrame by remember { mutableIntStateOf(-1) }
     var effectJob: Job? by remember { mutableStateOf(null) }
 
-    // 統計數據
     var perfectStreak by remember { mutableIntStateOf(0) }
     var perfectCount by remember { mutableIntStateOf(0) }
     var goodCount by remember { mutableIntStateOf(0) }
     var missCount by remember { mutableIntStateOf(0) }
 
-    // 視覺變數
     var trackBorderColor by remember { mutableStateOf(Color.White.copy(alpha = 0.5f)) }
     var effectColor by remember { mutableStateOf(Color.White) }
     val penaltyFlashAlpha = remember { Animatable(0f) }
@@ -124,7 +119,6 @@ fun Level1FollowBeatScreen(
         }
     }
 
-    // 遊戲流程
     LaunchedEffect(gameState) {
         if (gameState == GameState.COUNTDOWN) {
             score = 0
@@ -136,7 +130,6 @@ fun Level1FollowBeatScreen(
             feedbackText = "Ready..."
             countdownValue = 3
             currentNotes.clear()
-            // ✅ 載入真實譜面
             currentNotes.addAll(selectedDifficulty.chartData.map { it.copy(isHit = false) })
             delay(500)
             while (countdownValue > 0) { delay(1000); countdownValue-- }
@@ -148,10 +141,8 @@ fun Level1FollowBeatScreen(
 
         if (gameState == GameState.FINISHED) {
             soundManager.stopMusic()
-            // ✅ 儲存分數
             rankingViewModel.updateHighScore(selectedDifficulty.scoreId, score)
 
-            // 解鎖邏輯
             if (!isGuest) {
                 if (selectedDifficulty == Difficulty.EASY && score >= 8500) {
                     progressManager.unlockDifficulty(Difficulty.NORMAL.label)
@@ -163,7 +154,6 @@ fun Level1FollowBeatScreen(
         }
     }
 
-    // 遊戲迴圈
     LaunchedEffect(gameState) {
         if (gameState == GameState.PLAYING) {
             val gameDuration = selectedDifficulty.duration + 2000L
@@ -188,7 +178,6 @@ fun Level1FollowBeatScreen(
         }
     }
 
-    // 輸入監聽
     LaunchedEffect(Unit) {
         GameInputManager.keyEvents.collectLatest {
             if (gameState == GameState.PLAYING) {
@@ -259,12 +248,10 @@ fun Level1FollowBeatScreen(
         }
     }
 
-    // UI 繪製
     Box(
         modifier = Modifier.fillMaxSize()
             .background(Brush.verticalGradient(colors = listOf(Color(0xFF1A1A2E), Color(0xFF16213E), Color(0xFF0F3460))))
     ) {
-        // (A) 難度選擇
         if (gameState == GameState.SELECTION) {
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
@@ -309,20 +296,31 @@ fun Level1FollowBeatScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
-                OutlinedButton(onClick = onNavigateBack, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))) {
-                    Text("返回主選單", color = Color.White)
+                // ✅ 加入防抖
+                OutlinedButton(
+                    onClick = {
+                        if (isNavigating) return@OutlinedButton
+                        isNavigating = true
+                        soundManager.playSFX("cancel")
+                        onNavigateBack()
+                    },
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
+                    enabled = !isNavigating,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        disabledContentColor = Color.White.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Text("返回主選單", color = if (isNavigating) Color.White.copy(alpha = 0.5f) else Color.White)
                 }
             }
         }
 
-        // (B) 倒數畫面
         if (gameState == GameState.COUNTDOWN) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
                 Text(text = if (countdownValue > 0) "$countdownValue" else "GO!", fontSize = 120.sp, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
 
-        // (C) 遊戲進行畫面
         if (gameState == GameState.PLAYING) {
             if (penaltyFlashAlpha.value > 0f) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Red.copy(alpha = penaltyFlashAlpha.value)))
@@ -400,12 +398,26 @@ fun Level1FollowBeatScreen(
             val progress = (currentTime.toFloat() / selectedDifficulty.duration.toFloat()).coerceIn(0f, 1f)
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(8.dp), color = selectedDifficulty.color, trackColor = Color.Black.copy(alpha = 0.5f))
 
-            Button(onClick = { soundManager.stopMusic(); onNavigateBack() }, colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.7f)), modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) {
+            // ✅ 加入防抖
+            Button(
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    soundManager.stopMusic()
+                    soundManager.playSFX("cancel")
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red.copy(alpha = 0.7f),
+                    disabledContainerColor = Color.Red.copy(alpha = 0.5f)
+                ),
+                enabled = !isNavigating,
+                modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
+            ) {
                 Text("退出")
             }
         }
 
-        // (D) 結算畫面 (套用保險工具)
         if (gameState == GameState.RESULT) {
             GameResultContent(
                 score = score,
@@ -416,13 +428,18 @@ fun Level1FollowBeatScreen(
                 perfectColor = perfectColor,
                 onRetry = { gameState = GameState.COUNTDOWN },
                 onSelectDifficulty = { gameState = GameState.SELECTION },
-                onExit = onNavigateBack
+                onExit = {
+                    if (isNavigating) return@GameResultContent
+                    isNavigating = true
+                    soundManager.playSFX("cancel")
+                    onNavigateBack()
+                },
+                isNavigating = isNavigating
             )
         }
     }
 }
 
-// ✅ 結算元件：已整合保險工具
 @Composable
 fun GameResultContent(
     score: Int,
@@ -433,9 +450,9 @@ fun GameResultContent(
     perfectColor: Color,
     onRetry: () -> Unit,
     onSelectDifficulty: () -> Unit,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    isNavigating: Boolean
 ) {
-    // ✅ 呼叫保險工具
     val rank = GameScoreUtils.calculateRank(score, maxScore)
     val rankColor = GameScoreUtils.getRankColor(rank)
 
@@ -479,7 +496,16 @@ fun GameResultContent(
                     Button(onClick = onSelectDifficulty, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)), shape = RoundedCornerShape(12.dp)) {
                         Icon(Icons.Filled.List, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("選擇難度")
                     }
-                    OutlinedButton(onClick = onExit, colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935)), border = BorderStroke(1.dp, Color(0xFFE53935)), shape = RoundedCornerShape(12.dp)) {
+                    OutlinedButton(
+                        onClick = onExit,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFE53935),
+                            disabledContentColor = Color(0xFFE53935).copy(alpha = 0.5f)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFFE53935)),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isNavigating
+                    ) {
                         Text("離開")
                     }
                 }
@@ -523,7 +549,6 @@ fun DifficultySelectionCard(difficulty: Difficulty, isUnlocked: Boolean, onClick
     }
 }
 
-// ✅ 難度設定：使用真實音樂資源 ID
 enum class Difficulty(
     val label: String,
     val speed: Float,
@@ -534,10 +559,7 @@ enum class Difficulty(
     val maxScore: Int,
     val chartData: List<Note>
 ) {
-    // ✅ 這裡使用 Level1Charts 中的真實譜面 (NORMAL_CHART 是給 EASY 用的)
     EASY("簡單", 0.6f, Color(0xFF4CAF50), 11, R.raw.canon, 30000L, 13400, Level1Charts.LEVEL1_NORMAL_CHART),
-    // ✅ 使用 EASY_CHART 給 NORMAL 用
     NORMAL("普通", 0.9f, Color(0xFF2196F3), 12, R.raw.fur_elise, 45000L, 22900, Level1Charts.LEVEL1_EASY_CHART),
-    // ✅ 使用 HARD_CHART
     HARD("困難", 1.2f, Color(0xFFE53935), 13, R.raw.rondo_alla_turca, 60000L, 32850, Level1Charts.LEVEL1_HARD_CHART)
 }

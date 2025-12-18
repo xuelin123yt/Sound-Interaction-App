@@ -29,7 +29,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-// import androidx.lifecycle.compose.collectAsStateWithLifecycle // 移除：不再需要監聽分數列表
 import com.google.firebase.auth.FirebaseAuth
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
@@ -43,7 +42,6 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.math.pow
 
-// --- 狀態定義 ---
 enum class GameState { SELECTION, COUNTDOWN, PLAYING, FINISHED, RESULT }
 
 enum class Level2Difficulty(
@@ -79,7 +77,8 @@ fun Level2FollowBeatScreen(
     val auth = FirebaseAuth.getInstance()
     val isGuest = auth.currentUser?.isAnonymous == true
 
-    // 已移除 userScores 監聽，因為不需要顯示排行榜列表
+    // ✅ 防抖狀態
+    var isNavigating by remember { mutableStateOf(false) }
 
     val laneCount = 4
     val horizonRatio = -0.3f
@@ -91,7 +90,6 @@ fun Level2FollowBeatScreen(
 
     var gameState by remember { mutableStateOf(GameState.SELECTION) }
     var selectedDifficulty by remember { mutableStateOf(Level2Difficulty.EASY) }
-    // 已移除 showRecordsDialog
 
     var score by remember { mutableIntStateOf(0) }
     var combo by remember { mutableIntStateOf(0) }
@@ -141,7 +139,6 @@ fun Level2FollowBeatScreen(
 
         if (gameState == GameState.FINISHED) {
             mediaPlayer?.pause()
-            // 這裡依然保留更新分數的邏輯，只是不顯示查詢介面
             rankingViewModel?.updateHighScore(selectedDifficulty.scoreId, score)
             if (!isGuest) {
                 if (selectedDifficulty == Level2Difficulty.EASY && score >= 11000) progressManager.unlockDifficulty(Level2Difficulty.NORMAL.label)
@@ -208,7 +205,6 @@ fun Level2FollowBeatScreen(
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     Text("🎹 鋼琴節奏", fontSize = 36.sp, color = Color.White, fontWeight = FontWeight.ExtraBold, modifier = Modifier.align(Alignment.Center))
-                    // 已移除右上角的獎盃 IconButton
                 }
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -239,9 +235,24 @@ fun Level2FollowBeatScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(32.dp))
-                OutlinedButton(onClick = onNavigateBack, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))) { Text("返回主選單", color = Color.White) }
+
+                // ✅ 加入防抖
+                OutlinedButton(
+                    onClick = {
+                        if (isNavigating) return@OutlinedButton
+                        isNavigating = true
+                        soundManager?.playSFX("cancel")
+                        onNavigateBack()
+                    },
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
+                    enabled = !isNavigating,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        disabledContentColor = Color.White.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Text("返回主選單", color = if (isNavigating) Color.White.copy(alpha = 0.5f) else Color.White)
+                }
             }
-            // 已移除顯示 Dialog 的邏輯
         }
 
         if (gameState == GameState.COUNTDOWN) {
@@ -251,7 +262,8 @@ fun Level2FollowBeatScreen(
         }
 
         if (gameState == GameState.PLAYING || gameState == GameState.FINISHED) {
-            BoxWithConstraints(
+            // ✅ 移除未使用的 BoxWithConstraints，直接使用 Box
+            Box(
                 modifier = Modifier.fillMaxSize().pointerInput(Unit) {
                     detectTapGestures(onTap = { tapOffset ->
                         if (gameState == GameState.PLAYING) {
@@ -302,7 +314,25 @@ fun Level2FollowBeatScreen(
                 }
             }
             LinearProgressIndicator(progress = musicProgress, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(6.dp), color = Color.Cyan, trackColor = Color.White.copy(alpha = 0.3f))
-            Button(onClick = { try { mediaPlayer?.stop() } catch (e: Exception) {}; onNavigateBack() }, colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.7f)), modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) { Text("退出") }
+
+            // ✅ 加入防抖
+            Button(
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    try { mediaPlayer?.stop() } catch (e: Exception) {}
+                    soundManager?.playSFX("cancel")
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red.copy(alpha = 0.7f),
+                    disabledContainerColor = Color.Red.copy(alpha = 0.5f)
+                ),
+                enabled = !isNavigating,
+                modifier = Modifier.align(Alignment.TopStart).padding(16.dp)
+            ) {
+                Text("退出")
+            }
         }
 
         if (gameState == GameState.RESULT) {
@@ -312,7 +342,13 @@ fun Level2FollowBeatScreen(
                 difficultyName = selectedDifficulty.label,
                 onRetry = { gameState = GameState.COUNTDOWN },
                 onSelectDifficulty = { gameState = GameState.SELECTION },
-                onExit = onNavigateBack
+                onExit = {
+                    if (isNavigating) return@Level2GameResultContent
+                    isNavigating = true
+                    soundManager?.playSFX("cancel")
+                    onNavigateBack()
+                },
+                isNavigating = isNavigating
             )
         }
     }
@@ -321,7 +357,8 @@ fun Level2FollowBeatScreen(
 @Composable
 fun Level2GameResultContent(
     score: Int, maxScore: Int, hitCount: Int, missCount: Int, difficultyName: String,
-    onRetry: () -> Unit, onSelectDifficulty: () -> Unit, onExit: () -> Unit
+    onRetry: () -> Unit, onSelectDifficulty: () -> Unit, onExit: () -> Unit,
+    isNavigating: Boolean
 ) {
     val rank = GameScoreUtils.calculateRank(score, maxScore)
     val rankColor = GameScoreUtils.getRankColor(rank)
@@ -361,7 +398,16 @@ fun Level2GameResultContent(
                     Button(onClick = onSelectDifficulty, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)), shape = RoundedCornerShape(12.dp)) {
                         Icon(Icons.Filled.List, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("選難度")
                     }
-                    OutlinedButton(onClick = onExit, colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935)), border = BorderStroke(1.dp, Color(0xFFE53935)), shape = RoundedCornerShape(12.dp)) {
+                    OutlinedButton(
+                        onClick = onExit,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFFE53935),
+                            disabledContentColor = Color(0xFFE53935).copy(alpha = 0.5f)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFFE53935)),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isNavigating
+                    ) {
                         Text("離開")
                     }
                 }
@@ -369,8 +415,6 @@ fun Level2GameResultContent(
         }
     }
 }
-
-// 已移除 Level2RecordsDialog 和 RecordRow
 
 @Composable
 fun StatBubble(label: String, count: Int, color: Color) {
@@ -409,7 +453,6 @@ fun Level2DifficultySelectionCard(difficulty: Level2Difficulty, isUnlocked: Bool
 
 @Composable
 fun Level2CanvasContent(tiles: List<PianoTilePerspective>, laneFeedback: List<LaneFeedbackType>, visualHitZoneStart: Float, visualHitZoneEnd: Float) {
-    val density = LocalDensity.current
     Canvas(modifier = Modifier.fillMaxSize()) {
         val maxWidthPx = size.width; val maxHeightPx = size.height
         val horizonYPx = maxHeightPx * -0.3f; val vanishingPointX = maxWidthPx / 2f

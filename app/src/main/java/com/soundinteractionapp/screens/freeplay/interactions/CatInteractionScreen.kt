@@ -31,6 +31,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
+import com.soundinteractionapp.screens.game.levels.VideoBackground
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -45,80 +46,28 @@ data class CatAsset(
  * 專門用來播放背景影片的元件
  * 使用 ExoPlayer + AndroidView
  */
-@OptIn(UnstableApi::class) // 標註使用 Media3 的 UI API
-@Composable
-fun VideoBackground(videoResId: Int) {
-    val context = LocalContext.current
-
-    // 初始化 ExoPlayer
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            // 建立影片來源 URI (res/raw 資料夾)
-            val videoUri = Uri.parse("android.resource://${context.packageName}/$videoResId")
-            setMediaItem(MediaItem.fromUri(videoUri))
-
-            // 設定循環播放與自動播放
-            repeatMode = Player.REPEAT_MODE_ONE
-            playWhenReady = true
-            prepare()
-
-            // 設定靜音 (避免背景聲音干擾貓叫聲)
-            volume = 0f
-        }
-    }
-
-    // 當 Composable 被銷毀時，釋放播放器資源
-    DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-
-    // 嵌入原生 View
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = false // 隱藏播放控制條
-                // 設定縮放模式為 ZOOM (類似 ContentScale.Crop，填滿畫面不留黑邊)
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-            }
-        },
-        modifier = Modifier.fillMaxSize()
-    )
-}
-
+@OptIn(UnstableApi::class)
 @Composable
 fun CatInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
+    var isNavigating by remember { mutableStateOf(false) }
 
-    // --- [調整區：這裡控制大小與位置] ---
-
-    // 1. 位置設定
-    val farCatTopOffset = 180.dp      // 遠處：距離頂部
-    val nearCatBottomOffset = -10.dp   // 近處：距離底部 (貼底)
-
-    // 2. 大小設定 (製造透視感：近大遠小)
+    val farCatTopOffset = 180.dp
+    val nearCatBottomOffset = -10.dp
     val farCatSize = 120.dp
     val nearCatSize = 200.dp
 
-    // ------------------
-
-    // 貓咪資料庫
     val allCats = remember {
         listOf(
-            // --- 貓咪 1 (橘貓) ---
             CatAsset(
                 frames = listOf(R.drawable.cat1_2, R.drawable.cat1_3, R.drawable.cat1_4),
                 soundRes = R.raw.cat_meow,
                 name = "Orange Cat"
             ),
-            // --- 貓咪 2 (灰貓) ---
             CatAsset(
                 frames = listOf(R.drawable.cat2_1, R.drawable.cat2_2, R.drawable.cat2_3),
                 soundRes = R.raw.meow2,
                 name = "Grey Cat"
             ),
-            // --- 貓咪 3 (白貓) ---
             CatAsset(
                 frames = listOf(R.drawable.cat3_1, R.drawable.cat3_2, R.drawable.cat3_3),
                 soundRes = R.raw.meow3,
@@ -127,39 +76,27 @@ fun CatInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager)
         )
     }
 
-    // --- 狀態管理：確保兩隻貓不同 ---
     var nearCatIndex by remember { mutableIntStateOf(0) }
     var farCatIndex by remember { mutableIntStateOf(1) }
 
-    // 換貓邏輯
     fun getNextUniqueCat(currentIndex: Int, otherIndex: Int): Int {
         var next = (currentIndex + 1) % allCats.size
-        if (next == otherIndex) {
-            next = (next + 1) % allCats.size
-        }
+        if (next == otherIndex) next = (next + 1) % allCats.size
         return next
     }
 
-    // 這裡指向你的影片檔案 (res/raw/catbackground.mp4)
     val backgroundResId = R.raw.catbackground
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val screenHeightPx = constraints.maxHeight.toFloat()
-
-        // 計算位置 (px)
         val farYPx = with(density) { farCatTopOffset.toPx().toInt() }
-
         val nearCatSizePx = with(density) { nearCatSize.toPx() }
         val bottomPaddingPx = with(density) { nearCatBottomOffset.toPx() }
         val nearYPx = (screenHeightPx - nearCatSizePx - bottomPaddingPx).toInt()
 
-        // 1. 背景 (改用 VideoBackground)
         VideoBackground(videoResId = backgroundResId)
 
-        // 2. 互動區
-
-        // --- (A) 遠處的貓 (比較小) ---
         RotatingCat(
             catData = allCats[farCatIndex],
             soundManager = soundManager,
@@ -167,12 +104,9 @@ fun CatInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager)
             catDisplaySize = farCatSize,
             startFromRight = true,
             moveDuration = 6000,
-            onCycleComplete = {
-                farCatIndex = getNextUniqueCat(farCatIndex, nearCatIndex)
-            }
+            onCycleComplete = { farCatIndex = getNextUniqueCat(farCatIndex, nearCatIndex) }
         )
 
-        // --- (B) 近處的貓 (比較大) ---
         RotatingCat(
             catData = allCats[nearCatIndex],
             soundManager = soundManager,
@@ -180,24 +114,27 @@ fun CatInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager)
             catDisplaySize = nearCatSize,
             startFromRight = false,
             moveDuration = 4000,
-            onCycleComplete = {
-                nearCatIndex = getNextUniqueCat(nearCatIndex, farCatIndex)
-            }
+            onCycleComplete = { nearCatIndex = getNextUniqueCat(nearCatIndex, farCatIndex) }
         )
 
-        // 3. 返回按鈕
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .align(Alignment.TopStart)
+            modifier = Modifier.fillMaxWidth().padding(16.dp).align(Alignment.TopStart)
         ) {
             Button(
-                onClick = onNavigateBack,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.height(50.dp)
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                ),
+                modifier = Modifier.height(50.dp),
+                enabled = !isNavigating
             ) {
-                Text("← 返回", style = MaterialTheme.typography.bodyLarge)
+                Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
             }
         }
     }

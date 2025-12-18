@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.viewmodel.compose.viewModel // ✅ 新增 import
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -61,9 +61,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.soundinteractionapp.GameEngine
 import com.soundinteractionapp.R
-import com.soundinteractionapp.data.RankingViewModel // ✅ 新增 import
+import com.soundinteractionapp.data.RankingViewModel
 
-// --- 背景影片組件 (保持不變) ---
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoBackground(videoResId: Int) {
@@ -98,12 +97,13 @@ fun VideoBackground(videoResId: Int) {
 @Composable
 fun Level3PitchScreen(
     onNavigateBack: () -> Unit,
-    // ✅ 新增：注入 ViewModel (預設使用 viewModel() 獲取)
     rankingViewModel: RankingViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
-    // --- 遊戲狀態變數 ---
+    // ✅ 防抖狀態
+    var isNavigating by remember { mutableStateOf(false) }
+
     var birdY by remember { mutableFloatStateOf(500f) }
     var score by remember { mutableIntStateOf(0) }
     var currentHp by remember { mutableIntStateOf(100) }
@@ -112,16 +112,13 @@ fun Level3PitchScreen(
     var obstacles by remember { mutableStateOf(floatArrayOf()) }
     var isPlaying by remember { mutableStateOf(true) }
 
-    // 其他 UI 狀態
     var permissionGranted by remember { mutableStateOf(false) }
     var showStartHint by remember { mutableStateOf(true) }
     val maxHp = 100
 
-    // 字體
     val GameFont = FontFamily(Font(R.font.huninn))
     val scoreScale = remember { Animatable(1f) }
 
-    // 分數動畫
     LaunchedEffect(score) {
         if (score > 0) {
             scoreScale.snapTo(1f)
@@ -130,16 +127,13 @@ fun Level3PitchScreen(
         }
     }
 
-    // ✅ 新增：監聽遊戲結束狀態並儲存分數
     LaunchedEffect(isGameOver) {
         if (isGameOver) {
-            // ID 3 代表關卡 3，會自動處理訪客/會員邏輯
             rankingViewModel.onGameFinished(levelId = 3, finalScore = score)
             Log.d("Level3", "遊戲結束，嘗試更新分數: $score")
         }
     }
 
-    // --- 背景音樂 ---
     val musicList = listOf(R.raw.music1, R.raw.music2, R.raw.music3)
     val randomMusicResId = remember { musicList.random() }
     DisposableEffect(Unit) {
@@ -153,7 +147,6 @@ fun Level3PitchScreen(
         }
     }
 
-    // --- 音效 ---
     val soundPool = remember {
         SoundPool.Builder()
             .setMaxStreams(5)
@@ -172,7 +165,6 @@ fun Level3PitchScreen(
         onDispose { soundPool.release() }
     }
 
-    // --- 鳥動畫 ---
     val birdSprites = listOf(
         ImageBitmap.imageResource(id = R.drawable.bird_1),
         ImageBitmap.imageResource(id = R.drawable.bird_2),
@@ -181,7 +173,6 @@ fun Level3PitchScreen(
     var currentFrameIndex by remember { mutableIntStateOf(0) }
     var frameCounter by remember { mutableIntStateOf(0) }
 
-    // --- 權限與初始化 ---
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         permissionGranted = isGranted
     }
@@ -197,7 +188,6 @@ fun Level3PitchScreen(
         showStartHint = false
     }
 
-    // --- 錄音 ---
     LaunchedEffect(permissionGranted) {
         if (!permissionGranted) return@LaunchedEffect
         launch(Dispatchers.IO) {
@@ -218,7 +208,6 @@ fun Level3PitchScreen(
         }
     }
 
-    // --- 核心遊戲迴圈 ---
     LaunchedEffect(isPlaying) {
         while (isPlaying) {
             birdY = GameEngine.updateGame()
@@ -279,7 +268,6 @@ fun Level3PitchScreen(
                         val gapY = obstacles[i+1]
                         val gapHeight = obstacles[i+2]
 
-                        // 上管
                         val topPipeBottom = gapY - gapHeight / 2
                         if (topPipeBottom > 0) {
                             drawRect(brush = pipeBrush, topLeft = Offset(pipeX, 0f), size = Size(pipeWidth, topPipeBottom - rimHeight))
@@ -288,7 +276,6 @@ fun Level3PitchScreen(
                             drawRect(color = borderColor, topLeft = Offset(pipeX - rimOverhang, topPipeBottom - rimHeight), size = Size(pipeWidth + rimOverhang * 2, rimHeight), style = Stroke(width = 6f))
                         }
 
-                        // 下管
                         val bottomPipeTop = gapY + gapHeight / 2
                         drawRect(brush = pipeBrush, topLeft = Offset(pipeX, bottomPipeTop + rimHeight), size = Size(pipeWidth, 2000f - (bottomPipeTop + rimHeight)))
                         drawRect(color = borderColor, topLeft = Offset(pipeX, bottomPipeTop + rimHeight), size = Size(pipeWidth, 2000f - (bottomPipeTop + rimHeight)), style = Stroke(width = 6f))
@@ -297,7 +284,6 @@ fun Level3PitchScreen(
                     }
                 }
 
-                // 畫鳥
                 val visualBirdSize = 260
                 drawImage(
                     image = birdSprites[currentFrameIndex],
@@ -305,13 +291,11 @@ fun Level3PitchScreen(
                     dstSize = IntSize(visualBirdSize, visualBirdSize)
                 )
 
-                // 畫地板
                 drawRect(color = Color(0xFFDED895), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 200f))
                 drawRect(color = Color(0xFF73BF2E), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 20f))
             }
         }
 
-        // HUD
         Row(
             modifier = Modifier.fillMaxWidth().padding(24.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -375,7 +359,6 @@ fun Level3PitchScreen(
             }
         }
 
-        // 結算畫面
         if (isGameOver) {
             Box(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.85f)).clickable(enabled = false) {},
@@ -387,17 +370,39 @@ fun Level3PitchScreen(
                     Text(text = "血量耗盡", fontSize = 28.sp, color = Color.Gray, fontFamily = GameFont, modifier = Modifier.padding(bottom = 16.dp))
                     Text(text = "最終分數: $score", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = GameFont)
                     Spacer(modifier = Modifier.height(48.dp))
+
+                    // ✅ 加入防抖
                     Button(
-                        onClick = onNavigateBack,
+                        onClick = {
+                            if (isNavigating) return@Button
+                            isNavigating = true
+                            onNavigateBack()
+                        },
                         modifier = Modifier.size(width = 200.dp, height = 60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.DarkGray,
+                            disabledContainerColor = Color.DarkGray.copy(alpha = 0.7f)
+                        ),
+                        enabled = !isNavigating
                     ) {
                         Text(text = "回主選單", fontSize = 20.sp, fontFamily = GameFont)
                     }
                 }
             }
         } else {
-            Button(onClick = onNavigateBack, modifier = Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+            // ✅ 加入防抖
+            Button(
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    onNavigateBack()
+                },
+                modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
+                enabled = !isNavigating,
+                colors = ButtonDefaults.buttonColors(
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                )
+            ) {
                 Text(text = "退出", fontFamily = GameFont)
             }
         }

@@ -33,63 +33,48 @@ import com.soundinteractionapp.SoundManager
  */
 @Composable
 fun BirdInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
+    var isNavigating by remember { mutableStateOf(false) }
 
-    // 隨機鳥叫聲資源列表 (目前只使用一個檔案: R.raw.bird_sound)
-    val birdSoundResources = remember {
-        listOf(
-            R.raw.bird_sound // <-- 使用鳥兒的叫聲資源
-        )
-    }
-
-    // 鳥兒動畫幀資源列表
+    val birdSoundResources = remember { listOf(R.raw.bird_sound) }
     val birdFrames = remember {
-        listOf(
-            R.drawable.bird1_1, // <-- 使用 bird1_X 命名
-            R.drawable.bird1_2,
-            R.drawable.bird1_3,
-            R.drawable.bird1_4
-        )
+        listOf(R.drawable.bird1_1, R.drawable.bird1_2, R.drawable.bird1_3, R.drawable.bird1_4)
     }
-
-    // 背景圖片資源 ID
     val backgroundResId = R.drawable.bird_background
 
-    // 使用 Box 進行堆疊：背景 -> 鳥兒 -> 返回按鈕
     Box(modifier = Modifier.fillMaxSize()) {
-
-        // 1. 背景圖片 (放在最底層)
         Image(
             painter = painterResource(id = backgroundResId),
             contentDescription = "鳥兒互動背景",
-            contentScale = ContentScale.Crop, // 確保圖片填滿整個橫向螢幕
+            contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. 互動區：單一鳥兒
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 80.dp) // 避免與返回按鈕重疊
-        ) {
+        Box(modifier = Modifier.fillMaxSize().padding(top = 80.dp)) {
             MovingBird(
-                birdFrames = birdFrames, // 傳遞動畫幀
+                birdFrames = birdFrames,
                 soundManager = soundManager,
                 birdSoundResources = birdSoundResources
             )
         }
 
-        // 3. 頂部返回按鈕 (放在最上層)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.Top
         ) {
             Button(
-                onClick = onNavigateBack,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.height(50.dp)
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                ),
+                modifier = Modifier.height(50.dp),
+                enabled = !isNavigating
             ) {
                 Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
             }

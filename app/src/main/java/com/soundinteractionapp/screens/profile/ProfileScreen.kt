@@ -27,10 +27,6 @@ import com.soundinteractionapp.screens.profile.components.*
 import com.soundinteractionapp.screens.profile.dialogs.*
 import com.soundinteractionapp.screens.profile.models.AchievementProvider
 
-/**
- * 個人資料主畫面
- * 顯示用戶資訊、分數紀錄、成就展示和相關操作
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -43,24 +39,23 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
 
-    // 載入用戶資料
+    // ✅ 防抖狀態
+    var isNavigating by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         profileViewModel.loadUserProfile()
     }
 
-    // 狀態收集
     val userProfile by profileViewModel.userProfile.collectAsState()
     val isAnonymous by profileViewModel.isAnonymous.collectAsState()
     val isLoading by profileViewModel.isLoading.collectAsState()
 
-    // 對話框顯示狀態
     var showEditDialog by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showAvatarPicker by remember { mutableStateOf(false) }
 
-    // 預設頭像列表
     val defaultAvatars = remember {
         listOf(
             R.drawable.avatar_01, R.drawable.avatar_02, R.drawable.avatar_03, R.drawable.avatar_04,
@@ -72,7 +67,6 @@ fun ProfileScreen(
         )
     }
 
-    // 獲取成就資料
     val achievements = remember { AchievementProvider.getAllAchievements() }
 
     Scaffold(
@@ -80,7 +74,15 @@ fun ProfileScreen(
             TopAppBar(
                 title = { Text("個人資料", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    // ✅ 加入防抖
+                    IconButton(
+                        onClick = {
+                            if (isNavigating) return@IconButton
+                            isNavigating = true
+                            onNavigateBack()
+                        },
+                        enabled = !isNavigating
+                    ) {
                         Icon(Icons.Default.ArrowBack, "返回")
                     }
                 },
@@ -101,13 +103,11 @@ fun ProfileScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 訪客模式提示
             if (isAnonymous) {
                 AnonymousWarning()
                 Spacer(Modifier.height(24.dp))
             }
 
-            // 頭像區域
             AvatarSection(
                 displayName = userProfile.displayName,
                 account = userProfile.account,
@@ -120,7 +120,6 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            // 使用者資訊卡片
             UserInfoCard(
                 account = userProfile.account,
                 displayName = userProfile.displayName,
@@ -135,13 +134,11 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // 分數顯示區塊 (僅在非訪客時顯示)
             if (!isAnonymous) {
                 ScoreBoardSection(rankingViewModel)
                 Spacer(Modifier.height(24.dp))
             }
 
-            // 成就展示
             AchievementDisplay(
                 achievements = achievements,
                 modifier = Modifier.fillMaxWidth()
@@ -149,7 +146,6 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            // ✅ 只在非訪客模式下顯示刪除帳號按鈕
             if (!isAnonymous) {
                 DeleteAccountButton(
                     onClick = { showDeleteDialog = true }
@@ -160,7 +156,6 @@ fun ProfileScreen(
         }
     }
 
-    // 所有對話框
     ProfileDialogs(
         showAvatarPicker = showAvatarPicker,
         showEditDialog = showEditDialog,
@@ -180,7 +175,6 @@ fun ProfileScreen(
     )
 }
 
-// ========== ✅ 修正後的分數顯示卡片元件 ==========
 @Composable
 fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
     val scores by rankingViewModel.scores.collectAsState()
@@ -208,7 +202,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
                 color = Color(0xFFEEEEEE)
             )
 
-            // ========== Level 1 ==========
             Text(
                 "🎵 關卡 1: 跟著按",
                 fontSize = 14.sp,
@@ -220,7 +213,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
             ScoreRowItem("普通", scores.level1Normal, Color(0xFF4FC3F7))
             ScoreRowItem("困難", scores.level1Hard, Color(0xFFFF8A65))
 
-            // 顯示關卡 1 總分
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -243,7 +235,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ========== Level 2 ==========
             Text(
                 "🎹 關卡 2: 鋼琴節奏",
                 fontSize = 14.sp,
@@ -255,7 +246,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
             ScoreRowItem("普通 (龍貓)", scores.level2Normal, Color(0xFF2196F3))
             ScoreRowItem("困難 (Maria)", scores.level2Hard, Color(0xFFE53935))
 
-            // 顯示關卡 2 總分
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -278,7 +268,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ========== Level 3 ==========
             Text(
                 "🎤 關卡 3: 音高控制",
                 fontSize = 14.sp,
@@ -290,7 +279,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ========== ✅ 新增：Level 4 ==========
             Text(
                 "🎵 關卡 4: 音遊模式",
                 fontSize = 14.sp,
@@ -303,7 +291,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
             ScoreRowItem("能看見海的街道", scores.level4Osu03, Color(0xFF3F51B5))
             ScoreRowItem("伴隨著你 (純音樂版)", scores.level4Osu04, Color(0xFF2196F3))
 
-            // 顯示關卡 4 總分
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -345,9 +332,6 @@ fun ScoreRowItem(label: String, score: Int, color: Color) {
     }
 }
 
-/**
- * 訪客模式警告提示
- */
 @Composable
 private fun AnonymousWarning() {
     Card(
@@ -367,7 +351,7 @@ private fun AnonymousWarning() {
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                "您目前以訪客身分登入，無法修改個人資料",
+                "您目前以訪客身分登入,無法修改個人資料",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFFE65100)
@@ -376,9 +360,6 @@ private fun AnonymousWarning() {
     }
 }
 
-/**
- * 刪除帳號按鈕
- */
 @Composable
 private fun DeleteAccountButton(
     onClick: () -> Unit
@@ -402,9 +383,6 @@ private fun DeleteAccountButton(
     }
 }
 
-/**
- * 所有對話框
- */
 @Composable
 private fun ProfileDialogs(
     showAvatarPicker: Boolean,

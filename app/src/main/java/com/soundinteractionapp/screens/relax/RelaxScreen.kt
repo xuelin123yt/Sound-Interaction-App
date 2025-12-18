@@ -1,10 +1,14 @@
 package com.soundinteractionapp.screens.relax
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
@@ -22,6 +26,9 @@ fun RelaxScreenContent(
 ) {
     var activeEffectButtonId by remember { mutableStateOf<Int?>(null) }
 
+    // 🔥 關鍵修復：防止快速點擊返回按鈕
+    var isNavigating by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceVariant
@@ -37,15 +44,36 @@ fun RelaxScreenContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = onNavigateBack,
+                    onClick = {
+                        // 🔥 防抖保護
+                        if (isNavigating) return@Button
+                        isNavigating = true
+
+                        soundManager.playSound(R.raw.cancel)
+                        onNavigateBack()
+                    },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
+                        containerColor = MaterialTheme.colorScheme.error,
+                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                        disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
                     ),
-                    modifier = Modifier.height(50.dp)
+                    modifier = Modifier.height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isNavigating  // 🔥 點擊後禁用按鈕
                 ) {
-                    Text("← 返回模式選擇", style = MaterialTheme.typography.bodyLarge)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("返回", style = MaterialTheme.typography.titleMedium)
                 }
-                Spacer(modifier = Modifier.width(150.dp))
+
+                Text(
+                    "放鬆時光模式",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.width(100.dp))
             }
 
             // 中間：3 個環境音互動按鈕
@@ -63,7 +91,11 @@ fun RelaxScreenContent(
                     soundName = rainData.name,
                     icon = rainData.icon,
                     isActive = activeEffectButtonId == 0,
-                    onClick = { onNavigateToRainInteraction() }
+                    onClick = {
+                        if (isNavigating) return@SoundInteractionButton
+                        soundManager.playSound(R.raw.rain_sound)
+                        onNavigateToRainInteraction()
+                    }
                 )
 
                 // 海浪
@@ -72,7 +104,11 @@ fun RelaxScreenContent(
                     soundName = oceanData.name,
                     icon = oceanData.icon,
                     isActive = activeEffectButtonId == 1,
-                    onClick = { onNavigateToOceanInteraction() }
+                    onClick = {
+                        if (isNavigating) return@SoundInteractionButton
+                        soundManager.playSound(R.raw.wave_sound)
+                        onNavigateToOceanInteraction()
+                    }
                 )
 
                 // 微風
@@ -81,7 +117,11 @@ fun RelaxScreenContent(
                     soundName = windData.name,
                     icon = windData.icon,
                     isActive = activeEffectButtonId == 2,
-                    onClick = { onNavigateToWindInteraction() }
+                    onClick = {
+                        if (isNavigating) return@SoundInteractionButton
+                        soundManager.playSound(R.raw.wind_sound)
+                        onNavigateToWindInteraction()
+                    }
                 )
             }
 

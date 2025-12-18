@@ -32,34 +32,28 @@ fun WindInteractionScreen(
     soundManager: SoundManager
 ) {
     val context = LocalContext.current
-
-    // 狀態：是否正在播放
     var isPlaying by remember { mutableStateOf(false) }
+    var isNavigating by remember { mutableStateOf(false) }
 
-    // 1. 背景音效 (wind_sound.mp3)
     val audioPlayer = remember {
         try {
             MediaPlayer.create(context, R.raw.wind_sound).apply {
                 isLooping = true
                 setVolume(0.6f, 0.6f)
             }
-        } catch (e: Exception) {
-            null
-        }
+        } catch (e: Exception) { null }
     }
 
-    // 2. 影片播放器 (wind_video.mp4) - 靜音
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             val videoUri = Uri.parse("android.resource://${context.packageName}/${R.raw.wind_video}")
             setMediaItem(MediaItem.fromUri(videoUri))
             repeatMode = Player.REPEAT_MODE_ONE
-            volume = 0f // 靜音
+            volume = 0f
             prepare()
         }
     }
 
-    // 生命週期管理
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
@@ -67,7 +61,6 @@ fun WindInteractionScreen(
         }
     }
 
-    // 同步控制
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
             exoPlayer.play()
@@ -80,10 +73,7 @@ fun WindInteractionScreen(
         }
     }
 
-    // UI
     Box(modifier = Modifier.fillMaxSize()) {
-
-        // 影片層
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -96,7 +86,6 @@ fun WindInteractionScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // 互動層
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -104,9 +93,7 @@ fun WindInteractionScreen(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    if (!isPlaying) {
-                        isPlaying = true
-                    }
+                    if (!isPlaying) isPlaying = true
                 }
         ) {
             if (!isPlaying) {
@@ -121,7 +108,6 @@ fun WindInteractionScreen(
             }
         }
 
-        // 返回按鈕
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -130,15 +116,23 @@ fun WindInteractionScreen(
             horizontalArrangement = Arrangement.Start
         ) {
             Button(
-                onClick = onNavigateBack,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.height(50.dp)
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                ),
+                modifier = Modifier.height(50.dp),
+                enabled = !isNavigating
             ) {
                 Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
             }
         }
 
-        // 暫停按鈕
         if (isPlaying) {
             Button(
                 onClick = { isPlaying = false },

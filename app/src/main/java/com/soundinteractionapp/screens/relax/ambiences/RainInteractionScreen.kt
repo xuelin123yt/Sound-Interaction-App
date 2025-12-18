@@ -32,44 +32,35 @@ fun RainInteractionScreen(
     soundManager: SoundManager
 ) {
     val context = LocalContext.current
-
-    // 狀態：是否正在播放
     var isPlaying by remember { mutableStateOf(false) }
+    var isNavigating by remember { mutableStateOf(false) }
 
-    // --- 1. 背景音效播放器 (rain_sound.mp3) ---
     val audioPlayer = remember {
         try {
-            // 【修改點】使用雨的聲音檔案
             MediaPlayer.create(context, R.raw.rain_sound).apply {
-                isLooping = true // 循環播放
-                setVolume(0.6f, 0.6f) // 設定音量
+                isLooping = true
+                setVolume(0.6f, 0.6f)
             }
-        } catch (e: Exception) {
-            null
-        }
+        } catch (e: Exception) { null }
     }
 
-    // --- 2. 影片播放器 (ExoPlayer - 負責畫面) ---
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            // 【修改點】使用雨的影片檔案
             val videoUri = Uri.parse("android.resource://${context.packageName}/${R.raw.rain_video}")
             setMediaItem(MediaItem.fromUri(videoUri))
-            repeatMode = Player.REPEAT_MODE_ONE // 影片循環
-            volume = 0f // 影片設為靜音
+            repeatMode = Player.REPEAT_MODE_ONE
+            volume = 0f
             prepare()
         }
     }
 
-    // --- 3. 生命週期管理 & 同步控制 ---
     DisposableEffect(Unit) {
         onDispose {
-            exoPlayer.release()     // 釋放影片
-            audioPlayer?.release()  // 釋放音樂
+            exoPlayer.release()
+            audioPlayer?.release()
         }
     }
 
-    // 當 isPlaying 改變時，同時控制「影片」和「音樂」
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
             exoPlayer.play()
@@ -82,10 +73,7 @@ fun RainInteractionScreen(
         }
     }
 
-    // --- 4. 畫面 UI ---
     Box(modifier = Modifier.fillMaxSize()) {
-
-        // (A) 影片層 (無聲背景)
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -98,7 +86,6 @@ fun RainInteractionScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // (B) 透明互動層
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -106,22 +93,12 @@ fun RainInteractionScreen(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    if (isPlaying) {
-                        // 播放中點擊不做任何事 (依照你的需求)
-                    } else {
-                        // 尚未播放時，點擊 -> 開始
-                        isPlaying = true
-                    }
+                    if (!isPlaying) isPlaying = true
                 }
         ) {
-            // 提示文字
             if (!isPlaying) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        // 【修改點】文字改為雨聲
                         text = "點擊畫面感受雨聲",
                         style = MaterialTheme.typography.headlineMedium,
                         color = Color.White,
@@ -131,7 +108,6 @@ fun RainInteractionScreen(
             }
         }
 
-        // (C) 返回按鈕 (保持一致樣式)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -140,15 +116,23 @@ fun RainInteractionScreen(
             horizontalArrangement = Arrangement.Start
         ) {
             Button(
-                onClick = onNavigateBack,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.height(50.dp)
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                ),
+                modifier = Modifier.height(50.dp),
+                enabled = !isNavigating
             ) {
                 Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
             }
         }
 
-        // (D) 暫停按鈕
         if (isPlaying) {
             Button(
                 onClick = { isPlaying = false },
@@ -157,7 +141,6 @@ fun RainInteractionScreen(
                     .align(Alignment.BottomEnd)
                     .padding(32.dp)
             ) {
-                // 【修改點】文字改為暫停雨聲
                 Text("暫停雨聲")
             }
         }

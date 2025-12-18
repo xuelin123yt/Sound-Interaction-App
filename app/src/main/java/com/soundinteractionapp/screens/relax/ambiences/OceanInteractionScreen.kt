@@ -32,43 +32,37 @@ fun OceanInteractionScreen(
     soundManager: SoundManager
 ) {
     val context = LocalContext.current
-
-    // 狀態：是否正在播放
     var isPlaying by remember { mutableStateOf(false) }
 
-    // --- 1. 背景音效播放器 (wave_sound.mp3) ---
-    // 因為影片被靜音了，我們加回這個播放器來負責「好聽的海浪聲」
+    // 🔥 防止快速點擊返回按鈕
+    var isNavigating by remember { mutableStateOf(false) }
+
     val audioPlayer = remember {
         try {
             MediaPlayer.create(context, R.raw.wave_sound).apply {
-                isLooping = true // 循環播放
-                setVolume(0.6f, 0.6f) // 設定音量
+                isLooping = true
+                setVolume(0.6f, 0.6f)
             }
-        } catch (e: Exception) {
-            null
-        }
+        } catch (e: Exception) { null }
     }
 
-    // --- 2. 影片播放器 (ExoPlayer - 負責畫面) ---
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             val videoUri = Uri.parse("android.resource://${context.packageName}/${R.raw.ocean_video}")
             setMediaItem(MediaItem.fromUri(videoUri))
-            repeatMode = Player.REPEAT_MODE_ONE // 影片循環
-            volume = 0f // 【關鍵修改】將影片設為靜音
+            repeatMode = Player.REPEAT_MODE_ONE
+            volume = 0f
             prepare()
         }
     }
 
-    // --- 3. 生命週期管理 & 同步控制 ---
     DisposableEffect(Unit) {
         onDispose {
-            exoPlayer.release()     // 釋放影片
-            audioPlayer?.release()  // 釋放音樂
+            exoPlayer.release()
+            audioPlayer?.release()
         }
     }
 
-    // 當 isPlaying 改變時，同時控制「影片」和「音樂」
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
             exoPlayer.play()
@@ -81,10 +75,7 @@ fun OceanInteractionScreen(
         }
     }
 
-    // --- 4. 畫面 UI ---
     Box(modifier = Modifier.fillMaxSize()) {
-
-        // (A) 影片層 (無聲背景)
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -97,7 +88,6 @@ fun OceanInteractionScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // (B) 透明互動層
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -105,22 +95,11 @@ fun OceanInteractionScreen(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    if (isPlaying) {
-                        // 【關鍵修改】移除鳥叫聲
-                        // 這裡現在什麼都不做，或者你希望點擊也能暫停？
-                        // 目前保持空白，只讓右下角按鈕負責暫停
-                    } else {
-                        // 尚未播放時，點擊 -> 開始
-                        isPlaying = true
-                    }
+                    if (!isPlaying) isPlaying = true
                 }
         ) {
-            // 提示文字
             if (!isPlaying) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = "點擊畫面感受海浪",
                         style = MaterialTheme.typography.headlineMedium,
@@ -131,7 +110,6 @@ fun OceanInteractionScreen(
             }
         }
 
-        // (C) 返回按鈕
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -140,15 +118,23 @@ fun OceanInteractionScreen(
             horizontalArrangement = Arrangement.Start
         ) {
             Button(
-                onClick = onNavigateBack,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.height(50.dp)
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                ),
+                modifier = Modifier.height(50.dp),
+                enabled = !isNavigating
             ) {
                 Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
             }
         }
 
-        // (D) 暫停按鈕
         if (isPlaying) {
             Button(
                 onClick = { isPlaying = false },

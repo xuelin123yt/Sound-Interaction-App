@@ -16,9 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.navigation.NavController
 import com.soundinteractionapp.R
-import com.soundinteractionapp.SoundManager  // ✅ 新增
+import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.Beatmap
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.BeatmapRegistry
 import com.soundinteractionapp.screens.game.levels.level4.logic.*
@@ -30,18 +29,18 @@ import com.soundinteractionapp.screens.game.levels.level4.HitResult
 import com.soundinteractionapp.screens.game.levels.level4.NoteType
 
 /**
- * 遊戲主畫面 - 已修復音效延遲問題
+ * 遊戲主畫面 - 已修復音效延遲問題和導航衝突
  *
  * ✅ 改用 SoundManager 的 SoundPool
  * ✅ 移除 MediaPlayer 的打擊音效
+ * ✅ 移除 navController 參數
  */
 @Composable
 fun GameScreen(
-    navController: NavController,
     beatmap: Beatmap,
     onBack: () -> Unit,
     onNextLevel: () -> Unit,
-    soundManager: SoundManager  // ✅ 新增參數
+    soundManager: SoundManager
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -62,7 +61,6 @@ fun GameScreen(
     var countdownValue by remember { mutableIntStateOf(0) }
     var isCountingDown by remember { mutableStateOf(false) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
-    // ❌ 移除 hitSoundPlayer
     var musicDuration by remember { mutableLongStateOf(0L) }
     var pausedPosition by remember { mutableIntStateOf(0) }
     var audioOffset by remember { mutableIntStateOf(0) }
@@ -84,7 +82,7 @@ fun GameScreen(
         }
     }
 
-    // ✅ 新的打擊音效播放方法 - 使用 SoundPool
+    // ✅ 打擊音效播放方法 - 使用 SoundPool
     fun playHitSound() {
         soundManager.playHitSound()
     }
@@ -190,7 +188,7 @@ fun GameScreen(
                     )
                 },
                 onSliderReverse = {
-                    playHitSound()  // ✅ 現在使用 SoundPool
+                    playHitSound()
                 }
             )
 
@@ -212,7 +210,6 @@ fun GameScreen(
     DisposableEffect(Unit) {
         onDispose {
             mediaPlayer?.release()
-            // ❌ 移除 hitSoundPlayer?.release()
         }
     }
 
@@ -257,7 +254,7 @@ fun GameScreen(
                                 screenHeight = screenHeight,
                                 beatmap = beatmap,
                                 onHit = { activeNote, hitResult ->
-                                    playHitSound()  // ✅ 零延遲音效
+                                    playHitSound()
 
                                     when (hitResult) {
                                         HitResult.PERFECT -> {
@@ -306,7 +303,7 @@ fun GameScreen(
                                 screenHeight = screenHeight,
                                 beatmap = beatmap,
                                 onHit = { activeNote, _ ->
-                                    playHitSound()  // ✅ 零延遲音效
+                                    playHitSound()
                                     activeNote.isHit = true
                                     activeNote.sliderStartTime = currentTime
                                     activeNote.sliderProgress = 0f
@@ -329,7 +326,7 @@ fun GameScreen(
                                     activeNote = activeNote,
                                     currentTime = currentTime,
                                     onComplete = { hitResult, endPosition ->
-                                        playHitSound()  // ✅ 零延遲音效
+                                        playHitSound()
 
                                         when (hitResult) {
                                             HitResult.PERFECT -> {

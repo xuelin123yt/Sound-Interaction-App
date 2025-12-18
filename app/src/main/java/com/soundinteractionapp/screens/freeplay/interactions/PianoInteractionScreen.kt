@@ -30,64 +30,49 @@ import com.soundinteractionapp.SoundManager
  */
 @Composable
 fun PianoInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
+    var isNavigating by remember { mutableStateOf(false) }
 
-    // 8 個琴鍵的資源列表 (C4 到 C5)
-    // 修正：使用您在 res/raw 中實際的檔案名稱（piano_c1.wav, piano_d1.wav, ...）
     val pianoNotes = remember {
         listOf(
-            R.raw.piano_c1, // 假設 C4 對應您的 C1.wav
-            R.raw.piano_d1, // 假設 D4 對應您的 D1.wav
-            R.raw.piano_e1,
-            R.raw.piano_f1,
-            R.raw.piano_g1,
-            R.raw.piano_a1,
-            R.raw.piano_b1,
-            R.raw.piano_c2  // 假設 C5 對應您的 C2.wav
+            R.raw.piano_c1, R.raw.piano_d1, R.raw.piano_e1, R.raw.piano_f1,
+            R.raw.piano_g1, R.raw.piano_a1, R.raw.piano_b1, R.raw.piano_c2
         )
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-
-        // 使用 Column 堆疊：返回按鈕 -> 鋼琴鍵盤
         Column(modifier = Modifier.fillMaxSize()) {
-
-            // 頂部返回按鈕 (放在最上層)
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.Start
             ) {
                 Button(
-                    onClick = onNavigateBack,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.height(50.dp)
+                    onClick = {
+                        if (isNavigating) return@Button
+                        isNavigating = true
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                        disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                    ),
+                    modifier = Modifier.height(50.dp),
+                    enabled = !isNavigating
                 ) {
                     Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
                 }
             }
 
-            // 鍵盤區 (佔據剩餘所有空間)
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f) // 佔滿剩餘高度
-                    .padding(horizontal = 16.dp, vertical = 24.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp, vertical = 24.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 創建 8 個白鍵
                 pianoNotes.forEachIndexed { index, resId ->
                     PianoKey(
                         label = when(index) {
-                            0 -> "C"
-                            1 -> "D"
-                            2 -> "E"
-                            3 -> "F"
-                            4 -> "G"
-                            5 -> "A"
-                            6 -> "B"
-                            7 -> "C"
+                            0 -> "C"; 1 -> "D"; 2 -> "E"; 3 -> "F"
+                            4 -> "G"; 5 -> "A"; 6 -> "B"; 7 -> "C"
                             else -> ""
                         },
                         noteResId = resId,

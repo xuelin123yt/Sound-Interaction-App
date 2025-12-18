@@ -30,11 +30,11 @@ import com.soundinteractionapp.screens.settings.sections.*
 fun SettingScreen(
     soundManager: SoundManager,
     onNavigateBack: () -> Unit,
-    isLoggedIn: Boolean = false // 新增登入狀態參數
+    isLoggedIn: Boolean = false
 ) {
     val context = LocalContext.current
+    var isNavigating by remember { mutableStateOf(false) }
 
-    // ✅ 使用 soundManager 的實際值,確保同步
     var masterVolume by remember { mutableFloatStateOf(soundManager.masterVolume) }
     var musicVolume by remember { mutableFloatStateOf(soundManager.musicVolume) }
     var sfxVolume by remember { mutableFloatStateOf(soundManager.sfxVolume) }
@@ -43,10 +43,8 @@ fun SettingScreen(
     var isMusicMuted by remember { mutableStateOf(soundManager.isMusicMuted) }
     var isSfxMuted by remember { mutableStateOf(soundManager.isSfxMuted) }
 
-    // 選中的分類
     var selectedCategory by remember { mutableStateOf("音量") }
 
-    // 齒輪旋轉動畫
     val infiniteTransition = rememberInfiniteTransition(label = "gearRotation")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -59,7 +57,6 @@ fun SettingScreen(
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 背景漸層
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -74,7 +71,6 @@ fun SettingScreen(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // 頂部標題列
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
@@ -88,14 +84,17 @@ fun SettingScreen(
                 ) {
                     IconButton(
                         onClick = {
+                            if (isNavigating) return@IconButton
+                            isNavigating = true
                             soundManager.playSFX("cancel")
                             onNavigateBack()
-                        }
+                        },
+                        enabled = !isNavigating
                     ) {
                         Icon(
                             Icons.Default.ArrowBack,
                             contentDescription = "返回",
-                            tint = Color(0xFF673AB7),
+                            tint = if (!isNavigating) Color(0xFF673AB7) else Color(0xFF673AB7).copy(alpha = 0.5f),
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -129,11 +128,7 @@ fun SettingScreen(
                 }
             }
 
-            // 主要內容區域（左右分欄）
-            Row(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // 左側選單
+            Row(modifier = Modifier.fillMaxSize()) {
                 Surface(
                     modifier = Modifier
                         .width(80.dp)
@@ -147,7 +142,6 @@ fun SettingScreen(
                             .padding(vertical = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // 音量設定
                         CategoryItem(
                             icon = Icons.Default.VolumeUp,
                             isSelected = selectedCategory == "音量",
@@ -159,7 +153,6 @@ fun SettingScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // 顯示設定
                         CategoryItem(
                             icon = Icons.Default.Image,
                             isSelected = selectedCategory == "顯示",
@@ -171,7 +164,6 @@ fun SettingScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // 遊戲設定
                         CategoryItem(
                             icon = Icons.Default.SportsEsports,
                             isSelected = selectedCategory == "遊戲",
@@ -183,7 +175,6 @@ fun SettingScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // 其他設定
                         CategoryItem(
                             icon = Icons.Default.Info,
                             isSelected = selectedCategory == "其他",
@@ -195,14 +186,12 @@ fun SettingScreen(
                     }
                 }
 
-                // 右側內容區域
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(top = 24.dp)
                 ) {
-                    // 根據選中的分類顯示內容
                     when (selectedCategory) {
                         "音量" -> {
                             VolumeSection(

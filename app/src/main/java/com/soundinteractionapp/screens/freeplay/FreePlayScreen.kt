@@ -24,8 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.soundinteractionapp.R
-import com.soundinteractionapp.SoundManager // 假設你專案原本的 SoundManager 位置
-// 或是使用上一段程式碼定義的 GameModeSoundManager，請確保名稱一致
+import com.soundinteractionapp.SoundManager
 import kotlin.math.absoluteValue
 
 // =====================================================
@@ -37,17 +36,17 @@ data class FreePlayItem(
     val subtitle: String,
     val emoji: String,
     val color: Color,
-    val soundResId: Int, // 點擊時要播放的音效
+    val soundResId: Int,
     val onNavigate: () -> Unit
 )
 
 // =====================================================
-// 🎮 自由探索模式主畫面 (含音效版)
+// 🎮 自由探索模式主畫面（修復版）
 // =====================================================
 @Composable
 fun FreePlayScreenContent(
     onNavigateBack: () -> Unit,
-    soundManager: SoundManager, // 確保這裡傳入的是有 .play() 方法的 Manager
+    soundManager: SoundManager,
     onNavigateToCatInteraction: () -> Unit,
     onNavigateToPianoInteraction: () -> Unit,
     onNavigateToDogInteraction: () -> Unit,
@@ -55,6 +54,9 @@ fun FreePlayScreenContent(
     onNavigateToDrumInteraction: () -> Unit,
     onNavigateToBellInteraction: () -> Unit
 ) {
+    // 🔥 防止快速點擊導致白屏
+    var isNavigating by remember { mutableStateOf(false) }
+
     // 定義資料
     val items = listOf(
         FreePlayItem(0, "貓咪", "可愛的喵喵聲", "🐾", Color(0xFFFFCC80), R.raw.cat_meow, onNavigateToCatInteraction),
@@ -83,13 +85,19 @@ fun FreePlayScreenContent(
             ) {
                 Button(
                     onClick = {
-                        // 🎵 音效：返回
+                        if (isNavigating) return@Button
+                        isNavigating = true
                         soundManager.playSound(R.raw.cancel)
                         onNavigateBack()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                        disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                    ),
                     modifier = Modifier.height(50.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isNavigating
                 ) {
                     Icon(Icons.Filled.ArrowBack, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -114,14 +122,12 @@ fun FreePlayScreenContent(
                 contentAlignment = Alignment.Center
             ) {
                 VerticalFreePlayCarousel(
-                    soundManager = soundManager, // 傳入 SoundManager
+                    soundManager = soundManager,
                     items = items,
                     currentIndex = currentIndex,
-                    onIndexChange = {
-                        currentIndex = it
-                    },
+                    onIndexChange = { currentIndex = it },
                     onItemClick = { item ->
-                        // 🎵 音效：點擊該項目時，播放對應的動物/樂器聲音
+                        if (isNavigating) return@VerticalFreePlayCarousel
                         soundManager.playSound(item.soundResId)
                         item.onNavigate()
                     }
@@ -160,12 +166,10 @@ fun VerticalFreePlayCarousel(
                         if (!isAnimating) {
                             if (offsetY < -100 && currentIndex < items.size - 1) {
                                 isAnimating = true
-                                // 🎵 音效：切換下一張
                                 soundManager.playSound(R.raw.options2)
                                 onIndexChange(currentIndex + 1)
                             } else if (offsetY > 100 && currentIndex > 0) {
                                 isAnimating = true
-                                // 🎵 音效：切換上一張
                                 soundManager.playSound(R.raw.options2)
                                 onIndexChange(currentIndex - 1)
                             }
@@ -197,7 +201,7 @@ fun VerticalFreePlayCarousel(
 }
 
 // =====================================================
-// 🃏 單張卡片 UI (這裡不用改，邏輯都在上面處理了)
+// 🃏 單張卡片 UI
 // =====================================================
 @Composable
 fun FreePlayCard(
