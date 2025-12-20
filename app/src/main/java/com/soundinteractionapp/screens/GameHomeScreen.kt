@@ -75,7 +75,7 @@ fun GameHomeScreen(
             subtitle = "模式一",
             description = "自由觸碰螢幕,探索各種聲音與互動",
             iconResId = R.drawable.music_01,
-            color = Color(0xFF8C7AE6),
+            color = Color(0xFFFF5252),
             onClick = {
                 soundManager.playSFX("options3")
                 onNavigateToFreePlay()

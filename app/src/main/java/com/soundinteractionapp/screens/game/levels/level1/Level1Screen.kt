@@ -54,7 +54,8 @@ enum class GameState { SELECTION, COUNTDOWN, PLAYING, FINISHED, RESULT }
 fun Level1FollowBeatScreen(
     onNavigateBack: () -> Unit,
     soundManager: SoundManager,
-    rankingViewModel: RankingViewModel
+    rankingViewModel: RankingViewModel,
+    onGameStateChanged: (isPlaying: Boolean) -> Unit = {}  // ✅ 新增回調
 ) {
     val context = LocalContext.current
     val progressManager = remember { GameProgressManager(context) }
@@ -111,6 +112,12 @@ fun Level1FollowBeatScreen(
 
     val perfectPhrases = remember { listOf("太棒了!", "太厲害了吧", "是個高手") }
     val goodPhrases = remember { listOf("差一點呀", "很接近了!", "你做得到的!") }
+
+    // ✅ 通知 MainActivity 遊戲狀態變化
+    LaunchedEffect(gameState) {
+        val isPlaying = gameState == GameState.PLAYING
+        onGameStateChanged(isPlaying)
+    }
 
     LaunchedEffect(trackBorderColor) {
         if (trackBorderColor != Color.White.copy(alpha = 0.5f)) {
@@ -555,42 +562,39 @@ enum class Difficulty(
     val color: Color,
     val scoreId: Int,
     val musicResId: Int,
-    val duration: Long,  // ✅ 修正：根據譜面最後一個音符時間
+    val duration: Long,
     val maxScore: Int,
     val chartData: List<Note>
 ) {
-    // ✅ EASY 使用 NORMAL_CHART (96音符，最後音符在 94966ms)
     EASY(
         "簡單",
         0.6f,
         Color(0xFF4CAF50),
         11,
         R.raw.canon,
-        97000L,  // 改成 97秒 (94966 + 2000緩衝)
+        97000L,
         13400,
         Level1Charts.LEVEL1_NORMAL_CHART
     ),
 
-    // ✅ NORMAL 使用 EASY_CHART (166音符，最後音符在 74694ms)
     NORMAL(
         "普通",
         0.9f,
         Color(0xFF2196F3),
         12,
         R.raw.fur_elise,
-        77000L,  // 改成 77秒 (74694 + 2000緩衝)
+        77000L,
         22900,
         Level1Charts.LEVEL1_EASY_CHART
     ),
 
-    // ✅ HARD 使用 HARD_CHART (239音符，最後音符在 55193ms)
     HARD(
         "困難",
         1.2f,
         Color(0xFFE53935),
         13,
         R.raw.rondo_alla_turca,
-        58000L,  // 改成 58秒 (55193 + 2000緩衝)
+        58000L,
         32850,
         Level1Charts.LEVEL1_HARD_CHART
     )

@@ -47,7 +47,8 @@ private const val TAG = "MainActivity"
 class MainActivity : ComponentActivity() {
 
     private lateinit var soundManager: SoundManager
-    private var isInGameLevel by mutableStateOf(false)
+    // ✅ 修改：細分狀態控制
+    private var isLevel1Playing by mutableStateOf(false)  // Level1 是否在遊戲中
 
     private val rankingViewModel by viewModels<RankingViewModel>()
     private val authViewModel by viewModels<AuthViewModel>()
@@ -84,15 +85,15 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                // 🔥 監控路由變化
+                // ✅ 路由變化時的處理
                 LaunchedEffect(currentRoute) {
                     Log.d(TAG, "Current Route: $currentRoute")
 
-                    isInGameLevel = when (currentRoute) {
-                        Screen.GameLevel1.route, Screen.GameLevel2.route,
-                        Screen.GameLevel3.route, Screen.GameLevel4.route -> true
-                        else -> false
+                    // 離開 Level1 時重置狀態
+                    if (currentRoute != Screen.GameLevel1.route) {
+                        isLevel1Playing = false
                     }
+
                     when (currentRoute) {
                         Screen.Splash.route, Screen.GameLevel1.route,
                         Screen.GameLevel2.route, Screen.GameLevel3.route,
@@ -101,13 +102,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // 🔥 返回鍵處理（完全重寫）
+                // 🔥 返回鍵處理
                 DisposableEffect(currentRoute) {
                     Log.d(TAG, "Setting up BackPressedCallback for route: $currentRoute")
 
                     val callback = object : androidx.activity.OnBackPressedCallback(true) {
                         override fun handleOnBackPressed() {
-                            // 🔥 如果正在導航，直接忽略
                             if (isNavigating.value) {
                                 Log.d(TAG, "BLOCKED: Navigation in progress")
                                 return
@@ -129,7 +129,6 @@ class MainActivity : ComponentActivity() {
                                     Log.d(TAG, "ACTION: PopBackStack")
                                     soundManager.playSFX("cancel")
 
-                                    // 🔥 取消之前的導航任務，啟動新任務
                                     navigationJob?.cancel()
                                     navigationJob = mainScope.launch {
                                         try {
@@ -155,7 +154,6 @@ class MainActivity : ComponentActivity() {
                                                 Log.e(TAG, "ERROR: currentBackStackEntry is null!")
                                             }
 
-                                            // 🔥 延遲 300ms 後解鎖，確保導航動畫完成
                                             delay(300)
                                         } catch (e: Exception) {
                                             Log.e(TAG, "EXCEPTION in popBackStack", e)
@@ -257,7 +255,7 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(0) { inclusive = true }
                                 }
                             },
-                            soundManager = soundManager,  // 加入這行
+                            soundManager = soundManager,
                             authViewModel = authViewModel,
                             profileViewModel = profileViewModel,
                             rankingViewModel = rankingViewModel,
@@ -331,16 +329,21 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate(route)
                             },
                             rankingViewModel = rankingViewModel,
-                            soundManager = soundManager  // 🔥 新增這個參數
+                            soundManager = soundManager
                         )
                     }
 
                     composable(Screen.GameLevel1.route) {
                         Log.d(TAG, "Composing: GameLevel1")
                         Level1FollowBeatScreen(
-                            { if (!isNavigating.value) navController.popBackStack() },
-                            soundManager,
-                            rankingViewModel
+                            onNavigateBack = { if (!isNavigating.value) navController.popBackStack() },
+                            soundManager = soundManager,
+                            rankingViewModel = rankingViewModel,
+                            onGameStateChanged = { isPlaying ->
+                                // ✅ 接收 Level1 的遊戲狀態變化
+                                isLevel1Playing = isPlaying
+                                Log.d(TAG, "Level1 playing state changed: $isPlaying")
+                            }
                         )
                     }
 
@@ -408,11 +411,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // ✅ 修正：只在 Level1 遊戲進行中時攔截音量鍵
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        // 忽略重複事件
         if (event?.repeatCount != 0) return super.onKeyDown(keyCode, event)
-        val isVolumeKey = keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
-        if (isVolumeKey && !isInGameLevel) return super.onKeyDown(keyCode, event)
 
+        val isVolumeKey = keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+
+        // ✅ 關鍵修改：只在 Level1 遊戲進行中（PLAYING 狀態）時攔截音量鍵
+        if (isVolumeKey && !isLevel1Playing) {
+            Log.d(TAG, "Volume key - not in Level1 gameplay, letting system handle")
+            return super.onKeyDown(keyCode, event)
+        }
+
+        // 只有在 Level1 遊戲進行中才處理音量鍵作為遊戲輸入
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP,
             KeyEvent.KEYCODE_VOLUME_DOWN,
@@ -421,8 +433,12 @@ class MainActivity : ComponentActivity() {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
             KeyEvent.KEYCODE_CAMERA,
             KeyEvent.KEYCODE_DPAD_CENTER -> {
-                GameInputManager.triggerBeat()
-                return true
+                if (isLevel1Playing) {
+                    Log.d(TAG, "Game input triggered in Level1 gameplay")
+                    GameInputManager.triggerBeat()
+                    return true
+                }
+                return super.onKeyDown(keyCode, event)
             }
         }
         return super.onKeyDown(keyCode, event)

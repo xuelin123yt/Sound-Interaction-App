@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -36,15 +37,15 @@ fun ResultScreen(
     onRetry: () -> Unit,
     onExit: () -> Unit,
     rankingViewModel: RankingViewModel = viewModel(),
-    soundManager: com.soundinteractionapp.SoundManager // ✅ 加入 SoundManager
+    soundManager: com.soundinteractionapp.SoundManager
 ) {
     // ✅ Lottie 動畫設定（使用 JSON 格式）- 只播放一次
     val composition by rememberLottieComposition(
-        LottieCompositionSpec.RawRes(R.raw.confetti) // confetti.json
+        LottieCompositionSpec.RawRes(R.raw.confetti)
     )
     val progress by animateLottieCompositionAsState(
         composition = composition,
-        iterations = 1 // 只播放一次
+        iterations = 1
     )
 
     // ✅ 遊戲結束時儲存分數（只執行一次）
@@ -137,13 +138,14 @@ fun ResultScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    // ✅ 下一關按鈕 - 強制白色文字
                     if (hasNextLevel) {
                         Button(
                             onClick = onNextLevel,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50),
-                                contentColor = Color.White // ✅ 強制白色文字
+                                containerColor = Color(0xFF4CAF50)
                             ),
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth(0.85f)
                                 .height(45.dp)
@@ -152,17 +154,18 @@ fun ResultScreen(
                                 text = "下一關",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White // ✅ 強制白色
+                                color = Color.White  // ✅ 直接設置 color 參數
                             )
                         }
                     }
 
+                    // ✅ 重新開始按鈕 - 強制白色文字
                     Button(
                         onClick = onRetry,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFF9800),
-                            contentColor = Color.White // ✅ 強制白色文字
+                            containerColor = Color(0xFFFF9800)
                         ),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .height(45.dp)
@@ -171,16 +174,17 @@ fun ResultScreen(
                             text = "重新開始",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White // ✅ 強制白色
+                            color = Color.White  // ✅ 直接設置 color 參數
                         )
                     }
 
+                    // ✅ 離開按鈕 - 強制白色文字
                     Button(
                         onClick = onExit,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF666666),
-                            contentColor = Color.White // ✅ 強制白色文字
+                            containerColor = Color(0xFF666666)
                         ),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .height(45.dp)
@@ -189,7 +193,7 @@ fun ResultScreen(
                             text = "離開",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White // ✅ 強制白色
+                            color = Color.White  // ✅ 直接設置 color 參數
                         )
                     }
                 }
@@ -202,7 +206,7 @@ fun ResultScreen(
         LottieAnimation(
             composition = composition,
             progress = { progress },
-            contentScale = ContentScale.FillBounds, // 強制拉伸填滿螢幕
+            contentScale = ContentScale.FillBounds,
             modifier = Modifier.fillMaxSize()
         )
     }
