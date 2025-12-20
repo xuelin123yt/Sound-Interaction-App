@@ -33,6 +33,7 @@ fun ResultScreen(
     missCount: Int,
     hasNextLevel: Boolean,
     beatmapId: Int,
+    isAutoMode: Boolean = false,  // ✅ 新增：AUTO 模式標記
     onNextLevel: () -> Unit,
     onRetry: () -> Unit,
     onExit: () -> Unit,
@@ -48,12 +49,13 @@ fun ResultScreen(
         iterations = 1
     )
 
-    // ✅ 遊戲結束時儲存分數（只執行一次）
+    // ✅ 遊戲結束時儲存分數（AUTO 模式不儲存）
     LaunchedEffect(Unit) {
         val scoreId = 40 + beatmapId
-        Log.d("ResultScreen", "遊戲結束 - beatmapId=$beatmapId, scoreId=$scoreId, score=$score")
+        Log.d("ResultScreen", "遊戲結束 - beatmapId=$beatmapId, scoreId=$scoreId, score=$score, isAutoMode=$isAutoMode")
 
-        if (score > 0) {
+        // ✅ 只在非 AUTO 模式且分數大於 0 時儲存
+        if (!isAutoMode && score > 0) {
             rankingViewModel.updateHighScore(scoreId, score)
         }
 
@@ -84,11 +86,12 @@ fun ResultScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // ✅ 標題顯示 AUTO 模式
                 Text(
-                    text = "遊戲結束",
+                    text = if (isAutoMode) "AUTO 模式結束" else "遊戲結束",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = if (isAutoMode) Color(0xFF64B5F6) else Color.White
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -104,6 +107,16 @@ fun ResultScreen(
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFFFD700)
                 )
+
+                // ✅ AUTO 模式提示
+                if (isAutoMode) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "（演示模式，不計入排行榜）",
+                        fontSize = 12.sp,
+                        color = Color(0xFF64B5F6).copy(alpha = 0.7f)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -127,7 +140,7 @@ fun ResultScreen(
                         JudgementRow("Perfect", perfectCount, Color(0xFFFFD700))
                         JudgementRow("Great", greatCount, Color(0xFF00FF00))
                         JudgementRow("Good", goodCount, Color(0xFF87CEEB))
-                        JudgementRow("Miss", missCount, Color(0xFFFF0000))
+                        JudgementRow("Miss", missCount, Color(0xFFFF5252))  // ✅ 使用更亮的紅色
                     }
                 }
 
@@ -138,8 +151,8 @@ fun ResultScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // ✅ 下一關按鈕 - 強制白色文字
-                    if (hasNextLevel) {
+                    // ✅ 下一關按鈕 - AUTO 模式不顯示
+                    if (hasNextLevel && !isAutoMode) {
                         Button(
                             onClick = onNextLevel,
                             colors = ButtonDefaults.buttonColors(
@@ -154,12 +167,12 @@ fun ResultScreen(
                                 text = "下一關",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White  // ✅ 直接設置 color 參數
+                                color = Color.White
                             )
                         }
                     }
 
-                    // ✅ 重新開始按鈕 - 強制白色文字
+                    // ✅ 重新開始按鈕（AUTO 模式顯示為「再來一次」）
                     Button(
                         onClick = onRetry,
                         colors = ButtonDefaults.buttonColors(
@@ -171,14 +184,14 @@ fun ResultScreen(
                             .height(45.dp)
                     ) {
                         Text(
-                            text = "重新開始",
+                            text = if (isAutoMode) "再來一次" else "重新開始",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White  // ✅ 直接設置 color 參數
+                            color = Color.White
                         )
                     }
 
-                    // ✅ 離開按鈕 - 強制白色文字
+                    // ✅ 離開按鈕
                     Button(
                         onClick = onExit,
                         colors = ButtonDefaults.buttonColors(
@@ -193,7 +206,7 @@ fun ResultScreen(
                             text = "離開",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White  // ✅ 直接設置 color 參數
+                            color = Color.White
                         )
                     }
                 }

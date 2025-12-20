@@ -3,6 +3,7 @@ package com.soundinteractionapp.screens.game.levels.level4.components
 import android.media.MediaPlayer
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -33,14 +34,14 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * 歌曲選擇畫面 - 整合解鎖系統
+ * 歌曲選擇畫面 - 整合解鎖系統 + AUTO 模式
  */
 @Composable
 fun SongSelectionScreen(
     beatmaps: List<Beatmap>,
     isGuest: Boolean,
     scoreEntry: ScoreEntry,
-    onSongSelected: (Int) -> Unit,
+    onSongSelected: (Int, Boolean) -> Unit,  // ✅ 修改：新增 isAutoMode 參數
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -49,6 +50,14 @@ fun SongSelectionScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val previewAudioManager = remember { PreviewAudioManager(context) }
+
+    // ✅ 淡入淡出動畫狀態
+    var isTransitioning by remember { mutableStateOf(false) }
+    val fadeAlpha by animateFloatAsState(
+        targetValue = if (isTransitioning) 1f else 0f,
+        animationSpec = tween(durationMillis = 500),
+        label = "fadeAnimation"
+    )
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -264,16 +273,34 @@ fun SongSelectionScreen(
         GameActionButtons(
             onStartGame = {
                 previewAudioManager.stopImmediately()
-                selectedBeatmap?.let { onSongSelected(it.id) }
+                selectedBeatmap?.let { onSongSelected(it.id, false) }  // ✅ 正常模式
             },
             onShowExample = {
-                // TODO: 實現遊玩範例邏輯
+                // ✅ AUTO 模式：淡入黑屏 -> 開始遊戲
+                coroutineScope.launch {
+                    isTransitioning = true
+                    delay(500)  // 等待淡入完成
+                    previewAudioManager.stopImmediately()
+                    selectedBeatmap?.let { onSongSelected(it.id, true) }  // ✅ AUTO 模式
+                    delay(500)  // 等待畫面切換
+                    isTransitioning = false
+                }
             },
             isGameStartEnabled = selectedBeatmap != null && isUnlocked,
+            themeColor = selectedBeatmap?.let { getThemeColorById(it.id) } ?: Color(0xFF64D8FF),  // ✅ 傳遞主題色
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
                 .fillMaxWidth(0.45f)
         )
+
+        // ✅ 淡入淡出黑屏遮罩
+        if (fadeAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = fadeAlpha))
+            )
+        }
     }
 }

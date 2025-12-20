@@ -24,24 +24,20 @@ import com.soundinteractionapp.screens.game.levels.level4.logic.*
 import com.soundinteractionapp.screens.game.levels.level4.models.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-
 import com.soundinteractionapp.screens.game.levels.level4.HitResult
 import com.soundinteractionapp.screens.game.levels.level4.NoteType
+import kotlin.math.abs
 
 /**
- * 遊戲主畫面 - 已修復音效延遲問題和導航衝突
- *
- * ✅ 改用 SoundManager 的 SoundPool
- * ✅ 移除 MediaPlayer 的打擊音效
- * ✅ 移除 navController 參數
- * ✅ 加入 MISS 音效播放
+ * 遊戲主畫面 - 支援 AUTO 模式
  */
 @Composable
 fun GameScreen(
     beatmap: Beatmap,
     onBack: () -> Unit,
     onNextLevel: () -> Unit,
-    soundManager: SoundManager
+    soundManager: SoundManager,
+    isAutoMode: Boolean = false  // ✅ 新增：AUTO 模式參數
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -68,6 +64,7 @@ fun GameScreen(
     var activeNotes by remember { mutableStateOf<List<ActiveNote>>(emptyList()) }
     var hitEffects by remember { mutableStateOf<List<HitEffect>>(emptyList()) }
     var missEffects by remember { mutableStateOf<List<HitEffect>>(emptyList()) }
+    var starEffects by remember { mutableStateOf<List<StarEffect>>(emptyList()) }  // ✅ 星星特效
     var judgementText by remember { mutableStateOf<String?>(null) }
     var judgementColor by remember { mutableStateOf(Color.White) }
     var showPauseDialog by remember { mutableStateOf(false) }
@@ -83,21 +80,40 @@ fun GameScreen(
         }
     }
 
-    // ✅ 打擊音效播放方法 - 使用 SoundPool
     fun playHitSound() {
         soundManager.playOsuHit()
     }
 
-    // ✅ MISS 音效播放方法
     fun playMissSound() {
         soundManager.playOsuMiss()
+    }
+
+    // ✅ 輔助函數：計算縮放和偏移
+    fun calculateScaleAndOffset(): Pair<Pair<Float, Float>, Pair<Float, Float>> {
+        val PLAY_FIELD_SCALE = 0.85f
+        val ORIGINAL_WIDTH = 512f
+        val ORIGINAL_HEIGHT = 384f
+
+        val scaledWidth = ORIGINAL_WIDTH * PLAY_FIELD_SCALE
+        val scaledHeight = ORIGINAL_HEIGHT * PLAY_FIELD_SCALE
+
+        val offsetX = (ORIGINAL_WIDTH - scaledWidth) / 2f
+        val offsetY = (ORIGINAL_HEIGHT - scaledHeight) / 2f
+
+        val scaleX = (screenWidth / ORIGINAL_WIDTH) * PLAY_FIELD_SCALE
+        val scaleY = (screenHeight / ORIGINAL_HEIGHT) * PLAY_FIELD_SCALE
+
+        val screenOffsetX = offsetX * (screenWidth / ORIGINAL_WIDTH)
+        val screenOffsetY = offsetY * (screenHeight / ORIGINAL_HEIGHT)
+
+        return Pair(scaleX to scaleY, screenOffsetX to screenOffsetY)
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
-                    if (gameState == GameState.PLAYING) {
+                    if (gameState == GameState.PLAYING) {  // ✅ 移除 isAutoMode 限制
                         gameState = GameState.PAUSED
                         pausedPosition = mediaPlayer?.currentPosition ?: 0
                         mediaPlayer?.pause()
@@ -115,6 +131,115 @@ fun GameScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+    // ✅ AUTO 模式自動點擊邏輯
+    LaunchedEffect(currentTime, isAutoMode, activeNotes, gameState, isCountingDown) {
+        // ✅ 只在 PLAYING 狀態且不在倒數計時時執行
+        if (!isAutoMode || gameState != GameState.PLAYING || isCountingDown) return@LaunchedEffect
+
+        activeNotes.forEach { activeNote ->
+            if (activeNote.isHit || activeNote.isMissed) return@forEach
+
+            val timeDiff = currentTime - activeNote.note.time
+
+            // ✅ 在完美時機自動點擊（放寬到 30ms 誤差範圍，確保不會漏掉音符）
+            if (timeDiff in -15L..15L) {
+                when (activeNote.note.type) {
+                    NoteType.CIRCLE -> {
+                        playHitSound()
+                        activeNote.isHit = true
+                        perfectCount++
+                        combo++
+                        score += Level4Scoring.calculateScore(HitResult.PERFECT, combo)
+
+                        // ✅ 產生星星特效
+                        val (scale, screenOffset) = calculateScaleAndOffset()
+                        val (scaleX, scaleY) = scale
+                        val (screenOffsetX, screenOffsetY) = screenOffset
+                        val starPos = Offset(
+                            activeNote.note.x * scaleX + screenOffsetX,
+                            activeNote.note.y * scaleY + screenOffsetY
+                        )
+                        starEffects = starEffects + StarEffect(starPos, System.currentTimeMillis())
+
+                        hitEffects = hitEffects + HitEffect(
+                            Offset(activeNote.note.x, activeNote.note.y),
+                            System.currentTimeMillis(),
+                            HitResult.PERFECT
+                        )
+                    }
+                    NoteType.SLIDER -> {
+                        if (!activeNote.isHit) {
+                            playHitSound()
+                            activeNote.isHit = true
+                            activeNote.sliderStartTime = currentTime
+                            activeNote.sliderProgress = 0f
+                            activeNote.followTime = 0L
+
+                            // ✅ 產生星星特效
+                            val (scale, screenOffset) = calculateScaleAndOffset()
+                            val (scaleX, scaleY) = scale
+                            val (screenOffsetX, screenOffsetY) = screenOffset
+                            val starPos = Offset(
+                                activeNote.note.x * scaleX + screenOffsetX,
+                                activeNote.note.y * scaleY + screenOffsetY
+                            )
+                            starEffects = starEffects + StarEffect(starPos, System.currentTimeMillis())
+                        }
+                    }
+                    else -> {}
+                }
+
+                if (combo > maxCombo) maxCombo = combo
+            }
+        }
+
+        // ✅ AUTO 模式自動跟隨滑條
+        if (isAutoMode && !isCountingDown) {  // ✅ 倒數期間不更新滑條
+            activeNotes.filter { it.note.type == NoteType.SLIDER && it.isHit && !it.sliderCompleted }.forEach { activeNote ->
+                val elapsed = currentTime - activeNote.sliderStartTime
+                val duration = activeNote.note.endTime - activeNote.note.time
+
+                if (elapsed >= 0 && elapsed <= duration) {
+                    val newProgress = (elapsed.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                    activeNote.sliderProgress = newProgress
+                    activeNote.sliderFollowing = true
+                    activeNote.followTime = elapsed
+
+                    // ✅ 折返音效由 GameLoopHelper 統一處理，這裡不需要重複檢測
+
+                } else if (elapsed > duration && !activeNote.sliderCompleted) {
+                    // ✅ 滑條結束
+                    activeNote.sliderCompleted = true
+                    activeNote.sliderCompleteTime = currentTime
+                    playHitSound()
+
+                    perfectCount++
+                    combo++
+                    score += Level4Scoring.calculateScore(HitResult.PERFECT, combo)
+
+                    val endPos = NoteHandler.getSliderEndPosition(activeNote.note)
+                    hitEffects = hitEffects + HitEffect(endPos, System.currentTimeMillis(), HitResult.PERFECT)
+
+                    // ✅ 產生星星特效
+                    val (scale, screenOffset) = calculateScaleAndOffset()
+                    val (scaleX, scaleY) = scale
+                    val (screenOffsetX, screenOffsetY) = screenOffset
+                    val starPos = Offset(
+                        endPos.x * scaleX + screenOffsetX,
+                        endPos.y * scaleY + screenOffsetY
+                    )
+                    starEffects = starEffects + StarEffect(starPos, System.currentTimeMillis())
+
+                    if (combo > maxCombo) maxCombo = combo
+                }
+            }
+        }
+
+        // ✅ 清理過期的星星特效（600ms 生命週期）
+        starEffects = starEffects.filter {
+            System.currentTimeMillis() - it.startTime < 600
+        }
+    }
 
     LaunchedEffect(isCountingDown) {
         if (isCountingDown) {
@@ -127,6 +252,10 @@ fun GameScreen(
             countdownValue = 0
             isCountingDown = false
             gameState = GameState.PLAYING
+
+            // ✅ 恢復遊戲前重新計算 audioOffset
+            audioOffset = AudioOffsetManager.getCurrentOffset()
+
             mediaPlayer?.seekTo(pausedPosition)
             mediaPlayer?.start()
         }
@@ -155,7 +284,7 @@ fun GameScreen(
             mediaPlayer?.start()
         }
 
-        while (isActive && gameState == GameState.PLAYING) {
+        while (isActive && gameState == GameState.PLAYING && !isCountingDown) {  // ✅ 倒數期間暫停遊戲循環
             val rawTime = (mediaPlayer?.currentPosition ?: 0).toLong()
             currentTime = rawTime + audioOffset
 
@@ -163,38 +292,43 @@ fun GameScreen(
                 currentTime = currentTime,
                 activeNotes = activeNotes,
                 noteCounter = noteCounter,
-                isTouching = isTouching,
-                touchPosition = touchPosition,
+                isTouching = if (isAutoMode) false else isTouching,  // ✅ AUTO 模式不接受觸控
+                touchPosition = if (isAutoMode) null else touchPosition,
                 screenWidth = screenWidth,
                 screenHeight = screenHeight,
                 beatmap = beatmap,
                 onScoreUpdate = { result, comboValue ->
-                    when (result) {
-                        HitResult.PERFECT -> perfectCount++
-                        HitResult.GREAT -> greatCount++
-                        HitResult.GOOD -> goodCount++
-                        HitResult.MISS -> {
-                            missCount++
-                            combo = 0
+                    if (!isAutoMode) {  // ✅ 只在非 AUTO 模式計分
+                        when (result) {
+                            HitResult.PERFECT -> perfectCount++
+                            HitResult.GREAT -> greatCount++
+                            HitResult.GOOD -> goodCount++
+                            HitResult.MISS -> {
+                                missCount++
+                                combo = 0
+                            }
                         }
+                        if (result != HitResult.MISS) {
+                            combo = comboValue
+                            score += Level4Scoring.calculateScore(result, comboValue)
+                        }
+                        if (combo > maxCombo) maxCombo = combo
                     }
-                    if (result != HitResult.MISS) {
-                        combo = comboValue
-                        score += Level4Scoring.calculateScore(result, comboValue)
-                    }
-                    if (combo > maxCombo) maxCombo = combo
                 },
                 onMiss = { notePosition ->
-                    missCount++
-                    combo = 0
-                    playMissSound()  // ✅ 播放 MISS 音效
-                    missEffects = missEffects + HitEffect(
-                        notePosition,
-                        System.currentTimeMillis(),
-                        HitResult.MISS
-                    )
+                    if (!isAutoMode) {  // ✅ AUTO 模式不會 MISS
+                        missCount++
+                        combo = 0
+                        playMissSound()
+                        missEffects = missEffects + HitEffect(
+                            notePosition,
+                            System.currentTimeMillis(),
+                            HitResult.MISS
+                        )
+                    }
                 },
                 onSliderReverse = {
+                    // ✅ AUTO 模式和手動模式都要播放折返音效
                     playHitSound()
                 }
             )
@@ -219,7 +353,6 @@ fun GameScreen(
             mediaPlayer?.release()
         }
     }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -242,11 +375,12 @@ fun GameScreen(
                     activeNotes = activeNotes,
                     hitEffects = hitEffects,
                     missEffects = missEffects,
+                    starEffects = if (isAutoMode) starEffects else emptyList(),  // ✅ 傳遞星星特效
                     currentTime = currentTime,
                     screenWidth = screenWidth,
                     screenHeight = screenHeight,
                     beatmap = beatmap,
-                    onTouchEvent = { offset, isStart, isEnd ->
+                    onTouchEvent = if (isAutoMode) { _, _, _ -> } else { offset, isStart, isEnd ->  // ✅ AUTO 模式禁用觸控
                         if (gameState != GameState.PLAYING) return@GameCanvas
 
                         if (isStart) {
@@ -261,7 +395,6 @@ fun GameScreen(
                                 screenHeight = screenHeight,
                                 beatmap = beatmap,
                                 onHit = { activeNote, hitResult ->
-                                    // ✅ 根據判定結果播放對應音效
                                     if (hitResult == HitResult.MISS) {
                                         playMissSound()
                                     } else {
@@ -338,7 +471,6 @@ fun GameScreen(
                                     activeNote = activeNote,
                                     currentTime = currentTime,
                                     onComplete = { hitResult, endPosition ->
-                                        // ✅ 根據判定結果播放對應音效
                                         if (hitResult == HitResult.MISS) {
                                             playMissSound()
                                         } else {
@@ -418,6 +550,7 @@ fun GameScreen(
                 currentTime = currentTime,
                 totalDuration = musicDuration,
                 onPause = {
+                    // ✅ AUTO 模式也可以暫停
                     gameState = GameState.PAUSED
                     pausedPosition = mediaPlayer?.currentPosition ?: 0
                     mediaPlayer?.pause()
@@ -454,6 +587,7 @@ fun GameScreen(
                 missCount = missCount,
                 hasNextLevel = hasNextLevel,
                 beatmapId = beatmap.id,
+                isAutoMode = isAutoMode,  // ✅ 傳遞 AUTO 模式標記
                 onNextLevel = {
                     gameState = GameState.READY
                     score = 0
@@ -466,6 +600,7 @@ fun GameScreen(
                     activeNotes = emptyList()
                     hitEffects = emptyList()
                     missEffects = emptyList()
+                    starEffects = emptyList()
                     noteCounter = 0
                     pausedPosition = 0
                     mediaPlayer?.release()
@@ -483,6 +618,7 @@ fun GameScreen(
                     activeNotes = emptyList()
                     hitEffects = emptyList()
                     missEffects = emptyList()
+                    starEffects = emptyList()
                     noteCounter = 0
                     pausedPosition = 0
                     mediaPlayer?.seekTo(0)
@@ -491,11 +627,11 @@ fun GameScreen(
                     mediaPlayer?.release()
                     onBack()
                 },
-                soundManager = soundManager  // ✅ 加入這行
+                soundManager = soundManager
             )
         }
 
-        if (showPauseDialog) {
+        if (showPauseDialog) {  // ✅ AUTO 模式也顯示暫停對話框
             PauseDialog(
                 score = score,
                 combo = combo,
@@ -516,6 +652,7 @@ fun GameScreen(
                     activeNotes = emptyList()
                     hitEffects = emptyList()
                     missEffects = emptyList()
+                    starEffects = emptyList()
                     noteCounter = 0
                     pausedPosition = 0
                     mediaPlayer?.seekTo(0)
@@ -530,3 +667,9 @@ fun GameScreen(
         }
     }
 }
+
+// ✅ 星星特效數據類
+data class StarEffect(
+    val position: Offset,
+    val startTime: Long
+)

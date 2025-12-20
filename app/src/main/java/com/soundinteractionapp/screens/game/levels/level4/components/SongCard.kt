@@ -359,56 +359,94 @@ fun InstructionItem(number: String, title: String, description: String) {
 }
 
 /**
- * 右下角操作按鈕組
+ * 右下角操作按鈕組 - ✅ 支援主題配色和鎖定狀態
  */
 @Composable
 fun GameActionButtons(
     onStartGame: () -> Unit,
     onShowExample: () -> Unit,
     modifier: Modifier = Modifier,
-    isGameStartEnabled: Boolean = true
+    isGameStartEnabled: Boolean = true,
+    themeColor: Color = Color(0xFF64D8FF)
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        OutlinedButton(
-            onClick = onShowExample,
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color.White
-            ),
-            border = BorderStroke(
-                2.dp,
-                Color.White.copy(alpha = 0.5f)
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "遊玩範例",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-        }
+        if (isGameStartEnabled) {
+            // ✅ 解鎖狀態：兩個按鈕都使用 100% 主題色實色
+            Button(
+                onClick = onShowExample,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = themeColor  // ✅ 100% 實色
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "遊玩範例",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
 
-        Button(
-            onClick = onStartGame,
-            modifier = Modifier.weight(1f),
-            enabled = isGameStartEnabled,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF64D8FF),
-                disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "開始遊戲",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
+            Button(
+                onClick = onStartGame,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = themeColor  // ✅ 100% 實色
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "開始遊戲",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+        } else {
+            // ✅ 鎖定狀態：兩個按鈕都使用灰色 30% 透明度
+            Button(
+                onClick = { },
+                modifier = Modifier.weight(1f),
+                enabled = false,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Gray.copy(alpha = 0.3f),
+                    disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "遊玩範例",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+
+            Button(
+                onClick = { },
+                modifier = Modifier.weight(1f),
+                enabled = false,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Gray.copy(alpha = 0.3f),
+                    disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "開始遊戲",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
         }
     }
 }

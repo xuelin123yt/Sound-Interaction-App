@@ -28,6 +28,7 @@ fun GameCanvas(
     activeNotes: List<ActiveNote>,
     hitEffects: List<HitEffect>,
     missEffects: List<HitEffect>,
+    starEffects: List<StarEffect> = emptyList(),  // ✅ 新增這行
     currentTime: Long,
     screenWidth: Float,
     screenHeight: Float,
@@ -281,6 +282,70 @@ fun GameCanvas(
                 }
 
                 drawText(text, effectX, effectY, paint)
+            }
+        }
+
+        // ✅ 繪製星星特效（AUTO 模式） - 低調版
+        starEffects.forEach { effect ->
+            val elapsed = System.currentTimeMillis() - effect.startTime
+            val animProgress = (elapsed / 600f).coerceIn(0f, 1f)  // ✅ 從 800ms 減少到 600ms
+
+            val alpha = (1f - animProgress) * 0.6f  // ✅ 最大透明度降低到 60%
+            val scale = 1f + animProgress * 1.2f    // ✅ 縮放從 3x 降低到 2.2x
+            val rotation = animProgress * 180f      // ✅ 旋轉從 360° 降低到 180°
+
+            val effectX = effect.position.x
+            val effectY = effect.position.y - 35f * animProgress  // ✅ 向上飄動從 50px 降低到 35px
+
+            // 繪製旋轉的星星
+            rotate(rotation, Offset(effectX, effectY)) {
+                val starSize = 60f * scale  // ✅ 基礎大小從 60f 降低到 40f
+
+                // ✅ 拖尾效果減少到 2 層
+                for (i in 1..2) {
+                    drawCircle(
+                        color = Color(0xFFFFD700).copy(alpha = alpha * 0.08f * (3 - i)),  // ✅ 透明度降低
+                        radius = starSize * (1f + i * 0.2f),  // ✅ 擴散範圍縮小
+                        center = Offset(effectX, effectY)
+                    )
+                }
+
+                // 繪製星星主體（五角星）
+                val starPath = Path().apply {
+                    val points = 5
+                    val outerRadius = starSize
+                    val innerRadius = starSize * 0.4f
+
+                    for (i in 0 until points * 2) {
+                        val angle = (i * PI / points).toFloat() - PI.toFloat() / 2
+                        val radius = if (i % 2 == 0) outerRadius else innerRadius
+                        val x = effectX + radius * cos(angle)
+                        val y = effectY + radius * sin(angle)
+
+                        if (i == 0) moveTo(x, y) else lineTo(x, y)
+                    }
+                    close()
+                }
+
+                // ✅ 漸層填充（透明度降低）
+                drawPath(
+                    path = starPath,
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFFFFFFF).copy(alpha = alpha * 0.8f),  // ✅ 中心亮度降低
+                            Color(0xFFFFD700).copy(alpha = alpha * 0.6f)   // ✅ 邊緣亮度降低
+                        ),
+                        center = Offset(effectX, effectY),
+                        radius = starSize
+                    )
+                )
+
+                // ✅ 金色邊框（更細）
+                drawPath(
+                    path = starPath,
+                    color = Color(0xFFFFD700).copy(alpha = alpha * 0.7f),  // ✅ 透明度降低
+                    style = Stroke(width = 2f)  // ✅ 線寬從 3f 降低到 2f
+                )
             }
         }
     }
