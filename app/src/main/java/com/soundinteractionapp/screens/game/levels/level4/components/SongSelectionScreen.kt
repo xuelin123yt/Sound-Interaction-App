@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.soundinteractionapp.R
+import com.soundinteractionapp.data.ScoreEntry
+import com.soundinteractionapp.screens.game.levels.level4.Level4UnlockSystem
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.Beatmap
 import com.soundinteractionapp.screens.game.levels.level4.logic.PreviewAudioManager
 import kotlinx.coroutines.delay
@@ -31,11 +33,13 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * 歌曲選擇畫面 - 帶模糊背景、返回按鈕和試聽音樂
+ * 歌曲選擇畫面 - 整合解鎖系統
  */
 @Composable
 fun SongSelectionScreen(
     beatmaps: List<Beatmap>,
+    isGuest: Boolean,
+    scoreEntry: ScoreEntry,
     onSongSelected: (Int) -> Unit,
     onBack: () -> Unit
 ) {
@@ -44,19 +48,13 @@ fun SongSelectionScreen(
     val coroutineScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // ✅ 試聽音樂管理器
     val previewAudioManager = remember { PreviewAudioManager(context) }
 
-    // ✅ 監聽生命週期：暫停/恢復試聽音樂
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> {
-                    previewAudioManager.pause()
-                }
-                Lifecycle.Event.ON_RESUME -> {
-                    previewAudioManager.resume()
-                }
+                Lifecycle.Event.ON_PAUSE -> previewAudioManager.pause()
+                Lifecycle.Event.ON_RESUME -> previewAudioManager.resume()
                 else -> {}
             }
         }
@@ -66,12 +64,10 @@ fun SongSelectionScreen(
         }
     }
 
-    // 滾動音效播放器
     var scrollSoundPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var previousSelectedIndex by remember { mutableIntStateOf(0) }
     var lastSoundPlayTime by remember { mutableLongStateOf(0L) }
 
-    // 根據滾動位置計算選中的索引
     val selectedIndex by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -84,13 +80,11 @@ fun SongSelectionScreen(
         }
     }
 
-    // ✅ 監聽選中索引變化：播放滾動音效 + 試聽音樂
     LaunchedEffect(selectedIndex) {
         if (selectedIndex != previousSelectedIndex && beatmaps.isNotEmpty()) {
             val currentTime = System.currentTimeMillis()
             val indexDiff = abs(selectedIndex - previousSelectedIndex)
 
-            // 播放滾動音效
             if (indexDiff > 1) {
                 val start = minOf(previousSelectedIndex, selectedIndex)
                 val end = maxOf(previousSelectedIndex, selectedIndex)
@@ -122,7 +116,6 @@ fun SongSelectionScreen(
                 }
             }
 
-            // ✅ 播放新選中歌曲的試聽音樂
             val selectedBeatmap = beatmaps.getOrNull(selectedIndex)
             selectedBeatmap?.let { beatmap ->
                 previewAudioManager.playPreview(
@@ -136,9 +129,8 @@ fun SongSelectionScreen(
         }
     }
 
-    // ✅ 初始化時播放第一首歌的試聽
     LaunchedEffect(Unit) {
-        delay(300)  // 稍微延遲，等待畫面載入完成
+        delay(300)
         beatmaps.firstOrNull()?.let { beatmap ->
             previewAudioManager.playPreview(
                 audioResId = beatmap.audioResId,
@@ -148,7 +140,6 @@ fun SongSelectionScreen(
         }
     }
 
-    // ✅ 清理資源
     DisposableEffect(Unit) {
         onDispose {
             scrollSoundPlayer?.release()
@@ -156,8 +147,12 @@ fun SongSelectionScreen(
         }
     }
 
-    // 獲取當前選中的歌曲
     val selectedBeatmap = beatmaps.getOrNull(selectedIndex)
+
+    // ✅ 檢查當前選中歌曲是否解鎖
+    val isUnlocked = selectedBeatmap?.let { beatmap ->
+        Level4UnlockSystem.isSongUnlocked(beatmap.id, scoreEntry, isGuest)
+    } ?: false
 
     Box(modifier = Modifier.fillMaxSize()) {
         // 背景圖片（模糊化）
@@ -173,10 +168,7 @@ fun SongSelectionScreen(
             )
         }
 
-        // 前景內容
-        Row(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Row(modifier = Modifier.fillMaxSize()) {
             // 左側 - 歌曲列表
             Box(
                 modifier = Modifier
@@ -201,12 +193,15 @@ fun SongSelectionScreen(
                     ) {
                         itemsIndexed(beatmaps) { index, beatmap ->
                             val isSelected = index == selectedIndex
+                            val isSongUnlocked = Level4UnlockSystem.isSongUnlocked(
+                                beatmap.id, scoreEntry, isGuest
+                            )
 
                             SongCard(
                                 beatmap = beatmap,
                                 isSelected = isSelected,
+                                isLocked = !isSongUnlocked,
                                 onSelect = {
-                                    // 只負責滾動到該項目
                                     if (!isSelected) {
                                         coroutineScope.launch {
                                             listState.animateScrollToItem(index)
@@ -227,7 +222,14 @@ fun SongSelectionScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (selectedBeatmap != null) {
-                    TrapezoidImageDisplay(beatmap = selectedBeatmap)
+                    TrapezoidImageDisplay(
+                        beatmap = selectedBeatmap,
+                        isLocked = !isUnlocked,
+                        unlockHintText = Level4UnlockSystem.getUnlockHintText(
+                            selectedBeatmap.id,
+                            scoreEntry
+                        )
+                    )
                 }
             }
         }
@@ -235,7 +237,6 @@ fun SongSelectionScreen(
         // 左上角返回按鈕
         IconButton(
             onClick = {
-                // ✅ 返回時停止試聽音樂
                 previewAudioManager.stopImmediately()
                 onBack()
             },
@@ -262,14 +263,13 @@ fun SongSelectionScreen(
         // 右下角操作按鈕
         GameActionButtons(
             onStartGame = {
-                // ✅ 開始遊戲時停止試聽音樂
                 previewAudioManager.stopImmediately()
                 selectedBeatmap?.let { onSongSelected(it.id) }
             },
             onShowExample = {
                 // TODO: 實現遊玩範例邏輯
             },
-            isGameStartEnabled = selectedBeatmap != null,
+            isGameStartEnabled = selectedBeatmap != null && isUnlocked,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)

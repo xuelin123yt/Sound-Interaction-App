@@ -6,14 +6,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 暫停對話框
+ * 暫停對話框 - 優化效能版本
+ * ✅ 移除漸層背景，改用純色
+ * ✅ 按鈕文字強制白色
  */
 @Composable
 fun PauseDialog(
@@ -26,14 +27,7 @@ fun PauseDialog(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xDD0F0F1E),
-                        Color(0xEE1A1A2E)
-                    )
-                )
-            ),
+            .background(Color(0xDD000000)), // ✅ 改用純色，提升效能
         contentAlignment = Alignment.Center
     ) {
         Card(
@@ -127,7 +121,8 @@ fun PauseDialog(
                     Button(
                         onClick = onResume,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50)
+                            containerColor = Color(0xFF4CAF50),
+                            contentColor = Color.White // ✅ 強制白色
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -136,7 +131,8 @@ fun PauseDialog(
                         Text(
                             text = "繼續遊戲",
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White // ✅ 強制白色
                         )
                     }
 
@@ -144,7 +140,8 @@ fun PauseDialog(
                     Button(
                         onClick = onRetry,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFF9800)
+                            containerColor = Color(0xFFFF9800),
+                            contentColor = Color.White // ✅ 強制白色
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -153,7 +150,8 @@ fun PauseDialog(
                         Text(
                             text = "再試一次",
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White // ✅ 強制白色
                         )
                     }
 
@@ -161,7 +159,8 @@ fun PauseDialog(
                     Button(
                         onClick = onExit,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF44336)
+                            containerColor = Color(0xFFF44336),
+                            contentColor = Color.White // ✅ 強制白色
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -170,7 +169,8 @@ fun PauseDialog(
                         Text(
                             text = "離開遊戲",
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White // ✅ 強制白色
                         )
                     }
                 }

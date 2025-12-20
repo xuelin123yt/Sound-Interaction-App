@@ -490,7 +490,8 @@ fun GameScreen(
                 onExit = {
                     mediaPlayer?.release()
                     onBack()
-                }
+                },
+                soundManager = soundManager  // ✅ 加入這行
             )
         }
 

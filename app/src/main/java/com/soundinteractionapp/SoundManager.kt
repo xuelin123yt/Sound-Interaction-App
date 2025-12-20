@@ -93,6 +93,7 @@ class SoundManager(private val context: Context) {
             loadSound("options3", R.raw.options3)
             loadSound("osu_hit", R.raw.osu_hit_sound)
             loadSound("osu_miss", R.raw.osu_miss_sound)
+            loadSound("fireworks", R.raw.fireworks)
 
             loadSound("dog_bark1", R.raw.dog_bark1)
             loadSound("dog_bark2", R.raw.dog_bark3)

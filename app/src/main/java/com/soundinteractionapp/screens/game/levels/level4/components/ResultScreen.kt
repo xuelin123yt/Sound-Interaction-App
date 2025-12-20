@@ -35,7 +35,8 @@ fun ResultScreen(
     onNextLevel: () -> Unit,
     onRetry: () -> Unit,
     onExit: () -> Unit,
-    rankingViewModel: RankingViewModel = viewModel()
+    rankingViewModel: RankingViewModel = viewModel(),
+    soundManager: com.soundinteractionapp.SoundManager // ✅ 加入 SoundManager
 ) {
     // ✅ Lottie 動畫設定（使用 JSON 格式）- 只播放一次
     val composition by rememberLottieComposition(
@@ -54,6 +55,9 @@ fun ResultScreen(
         if (score > 0) {
             rankingViewModel.updateHighScore(scoreId, score)
         }
+
+        // 🎵 播放煙火音效
+        soundManager.playSFX("fireworks")
     }
 
     Box(
@@ -137,38 +141,56 @@ fun ResultScreen(
                         Button(
                             onClick = onNextLevel,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50)
+                                containerColor = Color(0xFF4CAF50),
+                                contentColor = Color.White // ✅ 強制白色文字
                             ),
                             modifier = Modifier
                                 .fillMaxWidth(0.85f)
                                 .height(45.dp)
                         ) {
-                            Text("下一關", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "下一關",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White // ✅ 強制白色
+                            )
                         }
                     }
 
                     Button(
                         onClick = onRetry,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFF9800)
+                            containerColor = Color(0xFFFF9800),
+                            contentColor = Color.White // ✅ 強制白色文字
                         ),
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .height(45.dp)
                     ) {
-                        Text("重新開始", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "重新開始",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White // ✅ 強制白色
+                        )
                     }
 
                     Button(
                         onClick = onExit,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF666666)
+                            containerColor = Color(0xFF666666),
+                            contentColor = Color.White // ✅ 強制白色文字
                         ),
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .height(45.dp)
                     ) {
-                        Text("離開", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "離開",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White // ✅ 強制白色
+                        )
                     }
                 }
 

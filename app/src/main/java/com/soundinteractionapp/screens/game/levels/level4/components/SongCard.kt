@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,28 +18,29 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
-import kotlin.math.roundToInt
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.Beatmap
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.coerceAtLeast
+import kotlin.math.roundToInt
 
 /**
- * 歌曲卡片 - 固定大小版本（移除直接點擊進入遊戲的邏輯）
+ * 歌曲卡片 - 支援鎖定狀態顯示（鎖頭在右側，標題和內容始終顯示）
  */
 @Composable
 fun SongCard(
     beatmap: Beatmap,
     isSelected: Boolean,
+    isLocked: Boolean,
     onSelect: () -> Unit
 ) {
     val elevation by animateDpAsState(
@@ -47,6 +50,16 @@ fun SongCard(
             stiffness = Spring.StiffnessMedium
         ),
         label = "elevation"
+    )
+
+    // ✅ 鎖頭大小動畫
+    val lockSize by animateDpAsState(
+        targetValue = if (isSelected && isLocked) 36.dp else 28.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "lockSize"
     )
 
     val themeColor = getThemeColorById(beatmap.id)
@@ -67,13 +80,16 @@ fun SongCard(
             elevation = CardDefaults.cardElevation(defaultElevation = elevation)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-
-                // 背景層：主題色 + 毛玻璃效果
+                // 背景層
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            themeColor.copy(alpha = if (isSelected) 0.6f else 0.35f),
+                            if (isLocked) {
+                                Color.Gray.copy(alpha = if (isSelected) 0.4f else 0.25f)
+                            } else {
+                                themeColor.copy(alpha = if (isSelected) 0.6f else 0.35f)
+                            },
                             shape = RoundedCornerShape(20.dp)
                         )
                 )
@@ -83,12 +99,16 @@ fun SongCard(
                         .fillMaxSize()
                         .blur(radius = 16.dp)
                         .background(
-                            themeColor.copy(alpha = if (isSelected) 0.2f else 0.10f),
+                            if (isLocked) {
+                                Color.Gray.copy(alpha = if (isSelected) 0.15f else 0.08f)
+                            } else {
+                                themeColor.copy(alpha = if (isSelected) 0.2f else 0.10f)
+                            },
                             shape = RoundedCornerShape(20.dp)
                         )
                 )
 
-                if (isSelected) {
+                if (isSelected && !isLocked) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -105,43 +125,75 @@ fun SongCard(
                     )
                 }
 
-                // 內容文字層
-                Column(
+                // ✅ 內容層：標題和描述始終顯示在左側
+                Row(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 24.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.Center
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(modifier = Modifier.height(if (isSelected) 28.dp else 24.dp)) {
-                        MarqueeText(
-                            text = beatmap.title,
-                            style = TextStyle(
-                                fontSize = if (isSelected) 20.sp else 17.sp,
-                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
-                                color = Color.White,
-                                letterSpacing = 0.5.sp
-                            ),
-                            marqueeSpeed = if (isSelected) 40.dp else 30.dp
-                        )
+                    // 左側：文字內容
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Box(modifier = Modifier.height(if (isSelected) 28.dp else 24.dp)) {
+                            MarqueeText(
+                                text = beatmap.title,
+                                style = TextStyle(
+                                    fontSize = if (isSelected) 20.sp else 17.sp,
+                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                    color = Color.White,
+                                    letterSpacing = 0.5.sp
+                                ),
+                                marqueeSpeed = if (isSelected) 40.dp else 30.dp
+                            )
+                        }
+
+                        if (beatmap.description.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(0.dp))
+                            Text(
+                                text = beatmap.description,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = if (isSelected) {
+                                    Color.White.copy(alpha = 0.95f)
+                                } else {
+                                    Color.White.copy(alpha = 0.7f)
+                                }
+                            )
+                        }
                     }
 
-                    if (beatmap.description.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(0.dp))
-                        Text(
-                            text = beatmap.description,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = if (isSelected)
-                                Color.White.copy(alpha = 0.95f)
-                            else
-                                Color.White.copy(alpha = 0.7f)
+                    // 右側：鎖頭圖標（僅在鎖定時顯示）
+                    if (isLocked) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "已鎖定",
+                            tint = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(lockSize)
                         )
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * 根據 beatmap ID 返回對應的主題色
+ */
+fun getThemeColorById(id: Int): Color {
+    return when (id) {
+        1 -> Color(0xFF64D8FF)  // 天空藍
+        2 -> Color(0xFFC9A227)  // 霧金黃
+        3 -> Color(0xFF607D8B)  // 冷調藍灰
+        4 -> Color(0xFF2E7D6B)  // 深冷綠
+        5 -> Color(0xFF64D8FF)  // 天空藍（第五首）
+        else -> Color(0xFF64D8FF)
     }
 }
 
@@ -176,7 +228,7 @@ fun GameInstructionsButton(
 }
 
 /**
- * 玩法說明對話框 - 內容區域最大化
+ * 玩法說明對話框
  */
 @Composable
 fun GameInstructionsDialog(onDismiss: () -> Unit) {
@@ -193,7 +245,6 @@ fun GameInstructionsDialog(onDismiss: () -> Unit) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // 標題 - 加大呼吸空間
                 Column {
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -216,7 +267,6 @@ fun GameInstructionsDialog(onDismiss: () -> Unit) {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // 內容區域 - 佔最大空間
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -243,7 +293,6 @@ fun GameInstructionsDialog(onDismiss: () -> Unit) {
                     )
                 }
 
-                // 按鈕 - 極限壓縮
                 Button(
                     onClick = onDismiss,
                     modifier = Modifier
@@ -267,7 +316,6 @@ fun GameInstructionsDialog(onDismiss: () -> Unit) {
     }
 }
 
-// 同時修改 InstructionItem，讓它超級緊湊：
 @Composable
 fun InstructionItem(number: String, title: String, description: String) {
     Row(
@@ -324,7 +372,6 @@ fun GameActionButtons(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 遊玩範例按鈕
         OutlinedButton(
             onClick = onShowExample,
             modifier = Modifier.weight(1f),
@@ -345,7 +392,6 @@ fun GameActionButtons(
             )
         }
 
-        // 開始遊戲按鈕
         Button(
             onClick = onStartGame,
             modifier = Modifier.weight(1f),
@@ -450,18 +496,5 @@ fun MarqueeText(
                 secondaryTextPlaceable.placeRelative(secondTextX, 0)
             }
         }
-    }
-}
-
-/**
- * 根據 beatmap ID 返回對應的主題色
- */
-private fun getThemeColorById(id: Int): Color {
-    return when (id) {
-        1 -> Color(0xFF64D8FF)  // 天空藍
-        2 -> Color(0xFFC9A227)  // 霧金黃
-        3 -> Color(0xFF607D8B)  // 冷調藍灰
-        4 -> Color(0xFF2E7D6B)  // 深冷綠
-        else -> Color(0xFF64D8FF)
     }
 }
