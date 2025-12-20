@@ -34,6 +34,7 @@ import com.soundinteractionapp.screens.game.levels.level4.NoteType
  * ✅ 改用 SoundManager 的 SoundPool
  * ✅ 移除 MediaPlayer 的打擊音效
  * ✅ 移除 navController 參數
+ * ✅ 加入 MISS 音效播放
  */
 @Composable
 fun GameScreen(
@@ -84,7 +85,12 @@ fun GameScreen(
 
     // ✅ 打擊音效播放方法 - 使用 SoundPool
     fun playHitSound() {
-        soundManager.playHitSound()
+        soundManager.playOsuHit()
+    }
+
+    // ✅ MISS 音效播放方法
+    fun playMissSound() {
+        soundManager.playOsuMiss()
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -181,6 +187,7 @@ fun GameScreen(
                 onMiss = { notePosition ->
                     missCount++
                     combo = 0
+                    playMissSound()  // ✅ 播放 MISS 音效
                     missEffects = missEffects + HitEffect(
                         notePosition,
                         System.currentTimeMillis(),
@@ -254,7 +261,12 @@ fun GameScreen(
                                 screenHeight = screenHeight,
                                 beatmap = beatmap,
                                 onHit = { activeNote, hitResult ->
-                                    playHitSound()
+                                    // ✅ 根據判定結果播放對應音效
+                                    if (hitResult == HitResult.MISS) {
+                                        playMissSound()
+                                    } else {
+                                        playHitSound()
+                                    }
 
                                     when (hitResult) {
                                         HitResult.PERFECT -> {
@@ -326,7 +338,12 @@ fun GameScreen(
                                     activeNote = activeNote,
                                     currentTime = currentTime,
                                     onComplete = { hitResult, endPosition ->
-                                        playHitSound()
+                                        // ✅ 根據判定結果播放對應音效
+                                        if (hitResult == HitResult.MISS) {
+                                            playMissSound()
+                                        } else {
+                                            playHitSound()
+                                        }
 
                                         when (hitResult) {
                                             HitResult.PERFECT -> {

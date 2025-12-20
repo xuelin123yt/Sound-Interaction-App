@@ -345,7 +345,9 @@ fun TopInfoBar(
                 DropdownMenu(
                     expanded = showDropdownMenu,
                     onDismissRequest = { showDropdownMenu = false },
-                    modifier = Modifier.width(180.dp)
+                    modifier = Modifier.width(180.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    containerColor = Color(0xFFF3E5F5)
                 ) {
                     DropdownMenuItem(
                         text = {
@@ -356,7 +358,7 @@ fun TopInfoBar(
                                     Modifier.size(20.dp)
                                 )
                                 Spacer(Modifier.width(12.dp))
-                                Text("個人資料", fontSize = 14.sp)
+                                Text("個人資料", fontSize = 14.sp, color = Color(0xFF5E35B1))
                             }
                         },
                         onClick = {
@@ -365,7 +367,7 @@ fun TopInfoBar(
                             onNavigateToProfile()
                         }
                     )
-                    Divider(color = Color(0xFFE0E0E0))
+                    HorizontalDivider(color = Color(0xFFE1BEE7), thickness = 1.dp)
                     DropdownMenuItem(
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {

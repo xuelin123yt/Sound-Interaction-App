@@ -13,8 +13,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.soundinteractionapp.data.RankingViewModel
-
-// ✅ Import 保險工具 & 難度設定
 import com.soundinteractionapp.utils.GameScoreUtils
 import com.soundinteractionapp.screens.game.levels.level1.Difficulty
 import com.soundinteractionapp.screens.game.levels.level2.Level2Difficulty
@@ -41,8 +39,8 @@ fun RankingDialogContent(onClose: () -> Unit, rankingViewModel: RankingViewModel
             Divider()
 
             LazyColumn(modifier = Modifier.weight(1f).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Level 1 (維持評分)
-                item { SectionTitle("🎵 關卡 1: 跟著按") }
+                // Level 1
+                item { SectionTitle("🎵 關卡 1: 料理鼠王") }
                 item {
                     ScoreRowWithRank("簡單", scores.level1Easy, Difficulty.EASY.maxScore, Color(0xFF81C784), scale)
                     ScoreRowWithRank("普通", scores.level1Normal, Difficulty.NORMAL.maxScore, Color(0xFF4FC3F7), scale)
@@ -50,8 +48,8 @@ fun RankingDialogContent(onClose: () -> Unit, rankingViewModel: RankingViewModel
                 }
                 item { TotalScoreRow(scores.level1Total); Divider(modifier = Modifier.padding(top = 8.dp)) }
 
-                // Level 2 (維持評分)
-                item { SectionTitle("🎹 關卡 2: 鋼琴節奏") }
+                // Level 2
+                item { SectionTitle("🎹 關卡 2: 鋼琴演奏") }
                 item {
                     ScoreRowWithRank("簡單 (天空之城)", scores.level2Easy, Level2Difficulty.EASY.maxScore, Color(0xFF4CAF50), scale)
                     ScoreRowWithRank("普通 (龍貓)", scores.level2Normal, Level2Difficulty.NORMAL.maxScore, Color(0xFF2196F3), scale)
@@ -59,20 +57,21 @@ fun RankingDialogContent(onClose: () -> Unit, rankingViewModel: RankingViewModel
                 }
                 item { TotalScoreRow(scores.level2Total); Divider(modifier = Modifier.padding(top = 8.dp)) }
 
-                // Level 3 (不評分，只顯示分數)
-                item { SectionTitle("🎤 關卡 3: 音高控制") }
+                // Level 3
+                item { SectionTitle("🎤 關卡 3: 聲控飛行") }
                 item {
                     ScoreRowNoRank("最高分", scores.level3Score, Color(0xFFE91E63))
                 }
                 item { Divider(modifier = Modifier.padding(top = 8.dp)) }
 
-                // ========== ✅ 新增：Level 4 ==========
-                item { SectionTitle("🎵 關卡 4: 音遊模式") }
+                // ========== ✅ Level 4: 補上第五首 ==========
+                item { SectionTitle("🎵 關卡 4: 音樂節奏") }
                 item {
-                    ScoreRowNoRank("哆啦A夢 主題曲", scores.level4Osu01, Color(0xFF9C27B0))
-                    ScoreRowNoRank("神魔之塔 主題曲（夜）", scores.level4Osu02, Color(0xFF673AB7))
-                    ScoreRowNoRank("能看見海的街道", scores.level4Osu03, Color(0xFF3F51B5))
-                    ScoreRowNoRank("伴隨著你 (純音樂版)", scores.level4Osu04, Color(0xFF2196F3))
+                    ScoreRowNoRank("哆啦A夢 主題曲", scores.level4Osu01, Color(0xFF81D4FA))
+                    ScoreRowNoRank("神魔之塔 主題曲（夜）", scores.level4Osu02, Color(0xFFFFCC80))
+                    ScoreRowNoRank("Ib 記憶", scores.level4Osu05, Color(0xFFB39DDB))
+                    ScoreRowNoRank("打上花火", scores.level4Osu04, Color(0xFFFFAB91))
+                    ScoreRowNoRank("能看見海的街道", scores.level4Osu03, Color(0xFFA5D6A7))
                 }
                 item { TotalScoreRow(scores.level4Total); Divider(modifier = Modifier.padding(top = 8.dp)) }
             }
@@ -97,7 +96,6 @@ fun TotalScoreRow(total: Int) {
     }
 }
 
-// ✅ 用於 Level 1 & 2 (有評分 S/A/B)
 @Composable
 fun ScoreRowWithRank(levelName: String, score: Int, maxScore: Int, color: Color, animScale: Float) {
     val rank = GameScoreUtils.calculateRank(score, maxScore)
@@ -123,7 +121,6 @@ fun ScoreRowWithRank(levelName: String, score: Int, maxScore: Int, color: Color,
     }
 }
 
-// ✅ 用於 Level 3 & 4 (無評分，純分數)
 @Composable
 fun ScoreRowNoRank(levelName: String, score: Int, color: Color) {
     Row(
@@ -132,8 +129,6 @@ fun ScoreRowNoRank(levelName: String, score: Int, color: Color) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(levelName, style = MaterialTheme.typography.bodyLarge, color = Color.DarkGray, modifier = Modifier.weight(1f))
-
-        // 只顯示分數，若為 0 顯示 "-"
         Text(
             text = if (score > 0) "$score 分" else "-",
             style = MaterialTheme.typography.bodyLarge,

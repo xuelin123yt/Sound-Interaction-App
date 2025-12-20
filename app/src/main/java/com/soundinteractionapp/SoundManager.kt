@@ -91,9 +91,8 @@ class SoundManager(private val context: Context) {
             loadSound("options", R.raw.options)
             loadSound("options2", R.raw.options2)
             loadSound("options3", R.raw.options3)
-
-            // ✅ 新增：預載遊戲打擊音效
-            loadSound("hit", R.raw.osu_hit_sound)
+            loadSound("osu_hit", R.raw.osu_hit_sound)
+            loadSound("osu_miss", R.raw.osu_miss_sound)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -159,13 +158,21 @@ class SoundManager(private val context: Context) {
     }
 
     /**
-     * ✅ 新增：專用於遊戲打擊音效的播放方法
-     * - 使用 SoundPool 確保零延遲
-     * - 可同時播放多個音效
-     * - 適用於高頻率觸發場景
+     * ✅ 舊版打擊音效方法（保留相容性）
      */
     fun playHitSound() {
-        playSFX("hit")
+        playSFX("osu_hit")
+    }
+
+    /**
+     * ✅ OSU 遊戲專用音效
+     */
+    fun playOsuHit() {
+        playSFX("osu_hit")
+    }
+
+    fun playOsuMiss() {
+        playSFX("osu_miss")
     }
 
     /**

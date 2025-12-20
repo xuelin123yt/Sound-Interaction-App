@@ -14,11 +14,12 @@ data class ScoreEntry(
     // 關卡 3
     val level3Score: Int = 0,
 
-    // ========== ✅ 新增：關卡 4 的四個譜面分數 ==========
+    // 關卡 4 的譜面分數
     val level4Osu01: Int = 0,   // OSU_01 譜面
     val level4Osu02: Int = 0,   // OSU_02 譜面
     val level4Osu03: Int = 0,   // OSU_03 譜面
-    val level4Osu04: Int = 0    // OSU_04 譜面
+    val level4Osu04: Int = 0,   // OSU_04 譜面
+    val level4Osu05: Int = 0    // OSU_05 譜面
 ) {
     // 取得關卡 1 的總分
     val level1Total: Int
@@ -28,7 +29,9 @@ data class ScoreEntry(
     val level2Total: Int
         get() = level2Easy + level2Normal + level2Hard
 
-    // ========== ✅ 新增：取得關卡 4 的總分 ==========
+    // ========== ✅ 修復：加上 level4Osu05 ==========
     val level4Total: Int
-        get() = level4Osu01 + level4Osu02 + level4Osu03 + level4Osu04
+        get() = level4Osu01 + level4Osu02 + level4Osu03 + level4Osu04 + level4Osu05
+    //                                                                   ^^^^^^^^^^^^^^
+    //                                                                   之前漏掉了!
 }

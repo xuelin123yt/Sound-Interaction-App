@@ -21,6 +21,12 @@ interface Beatmap {
     val audioLeadIn: Long
     val timingPoints: List<TimingPoint>
     val notes: List<Note>
+
+    // ✅ 試聽音樂起始位置（毫秒）
+    // 預設從 40 秒開始，各譜面可以覆寫這個值
+    // 設為 0 則從頭開始播放
+    val previewStartTime: Int get() = 40000
+
     fun getBPM(): Double
 }
 
@@ -32,6 +38,7 @@ object BeatmapRegistry {
         register(OSU_02)
         register(OSU_03)
         register(OSU_04)
+        register(OSU_05)
     }
 
     private fun register(beatmap: Beatmap) {

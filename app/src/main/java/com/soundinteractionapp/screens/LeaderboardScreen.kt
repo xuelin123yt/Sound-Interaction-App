@@ -33,7 +33,7 @@ import androidx.navigation.NavController
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.LeaderboardViewModel
-import com.soundinteractionapp.data.LeaderboardItem
+import com.soundinteractionapp.data.LeaderboardItem  // ✅ 改成 import，不要重複定義
 import kotlinx.coroutines.launch
 
 // =====================================================
@@ -273,10 +273,10 @@ private fun LeaderboardRowItem(item: LeaderboardItem) {
 
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = Color.White // ✅ 所有卡片都是白色背景
+            containerColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp // ✅ 統一陰影高度
+            defaultElevation = 2.dp
         ),
         shape = RoundedCornerShape(16.dp)
     ) {

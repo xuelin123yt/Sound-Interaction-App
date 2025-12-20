@@ -31,6 +31,7 @@ object OSU_02 : Beatmap {
     override val quickTapGrace = 500L
     override val offset = 0L
     override val audioLeadIn = 0L
+    override val previewStartTime: Int = 0
 
     override val timingPoints = listOf(
         TimingPoint(471, 600.017130079724, 100, false),
@@ -58,12 +59,12 @@ object OSU_02 : Beatmap {
         Note(160f, 192f, 10671, NoteType.CIRCLE, comboColor = 0),
         Note(260f, 96f, 11271, NoteType.SLIDER, 11871, CurveType.LINEAR, listOf(360f to 96f), 1, 140f, 0),
         Note(304f, 192f, 12471, NoteType.SLIDER, 13071, CurveType.LINEAR, listOf(152f to 192f), 1, 140f, 0),
-        Note(200f, 288f, 13671, NoteType.SLIDER, 14271, CurveType.LINEAR, listOf(312f to 288f, 304f to 288f), 1, 140f, 0),
+        Note(200f, 288f, 13671, NoteType.SLIDER, 14271, CurveType.LINEAR, listOf(300f to 288f, 304f to 288f), 1, 140f, 0),
         Note(136f, 192f, 14871, NoteType.CIRCLE, comboColor = 1),
         Note(256f, 192f, 15471, NoteType.CIRCLE, comboColor = 1),
         Note(256f, 72f, 16071, NoteType.SLIDER, 16671, CurveType.BEZIER, listOf(376f to 192f, 376f to 192f), 1, 140f, 1),
-        Note(376f, 192f, 17271, NoteType.CIRCLE, comboColor = 1),
-        Note(256f, 192f, 17871, NoteType.CIRCLE, comboColor = 1),
+        Note(376f, 300f, 17271, NoteType.CIRCLE, comboColor = 1),
+        Note(300f, 200f, 17871, NoteType.CIRCLE, comboColor = 1),
         Note(128f, 200f, 18471, NoteType.SLIDER, 19671, CurveType.PERFECT, listOf(200f to 120f, 160f to 216f), 1, 280f, 1),
         Note(96f, 264f, 20271, NoteType.CIRCLE, comboColor = 2),
         Note(112f, 152f, 20871, NoteType.SLIDER, 21471, CurveType.LINEAR, listOf(216f to 56f), 1, 140f, 2),
@@ -81,7 +82,7 @@ object OSU_02 : Beatmap {
         Note(104f, 152f, 34671, NoteType.CIRCLE, comboColor = 1),
         Note(152f, 40f, 35271, NoteType.CIRCLE, comboColor = 2),
         Note(288f, 64f, 35871, NoteType.CIRCLE, comboColor = 2),
-        Note(408f, 136f, 36471, NoteType.SLIDER, 37071, CurveType.LINEAR, listOf(288f to 240f), 1, 140f, 2),
+        Note(430f, 80f, 36471, NoteType.SLIDER, 37071, CurveType.LINEAR, listOf(340f to 150f), 1, 140f, 2),
         Note(240f, 184f, 37671, NoteType.SLIDER, 39471, CurveType.BEZIER, listOf(120f to 152f, 24f to 216f, 88f to 368f, 224f to 360f, 224f to 352f, 280f to 280f), 1, 420f, 2),
         Note(344f, 216f, 40071, NoteType.CIRCLE, comboColor = 3),
         Note(392f, 304f, 40671, NoteType.CIRCLE, comboColor = 3),

@@ -18,16 +18,20 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.soundinteractionapp.R
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.Beatmap
+import com.soundinteractionapp.screens.game.levels.level4.logic.PreviewAudioManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * 歌曲選擇畫面 - 帶模糊背景和返回按鈕
+ * 歌曲選擇畫面 - 帶模糊背景、返回按鈕和試聽音樂
  */
 @Composable
 fun SongSelectionScreen(
@@ -38,6 +42,29 @@ fun SongSelectionScreen(
     val context = LocalContext.current
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // ✅ 試聽音樂管理器
+    val previewAudioManager = remember { PreviewAudioManager(context) }
+
+    // ✅ 監聽生命週期：暫停/恢復試聽音樂
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    previewAudioManager.pause()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    previewAudioManager.resume()
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // 滾動音效播放器
     var scrollSoundPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
@@ -57,12 +84,13 @@ fun SongSelectionScreen(
         }
     }
 
-    // 監聽選中索引變化並播放音效
+    // ✅ 監聽選中索引變化：播放滾動音效 + 試聽音樂
     LaunchedEffect(selectedIndex) {
         if (selectedIndex != previousSelectedIndex && beatmaps.isNotEmpty()) {
             val currentTime = System.currentTimeMillis()
             val indexDiff = abs(selectedIndex - previousSelectedIndex)
 
+            // 播放滾動音效
             if (indexDiff > 1) {
                 val start = minOf(previousSelectedIndex, selectedIndex)
                 val end = maxOf(previousSelectedIndex, selectedIndex)
@@ -94,14 +122,37 @@ fun SongSelectionScreen(
                 }
             }
 
+            // ✅ 播放新選中歌曲的試聽音樂
+            val selectedBeatmap = beatmaps.getOrNull(selectedIndex)
+            selectedBeatmap?.let { beatmap ->
+                previewAudioManager.playPreview(
+                    audioResId = beatmap.audioResId,
+                    startTime = beatmap.previewStartTime,
+                    beatmapId = beatmap.id
+                )
+            }
+
             previousSelectedIndex = selectedIndex
         }
     }
 
-    // 清理音效播放器
+    // ✅ 初始化時播放第一首歌的試聽
+    LaunchedEffect(Unit) {
+        delay(300)  // 稍微延遲，等待畫面載入完成
+        beatmaps.firstOrNull()?.let { beatmap ->
+            previewAudioManager.playPreview(
+                audioResId = beatmap.audioResId,
+                startTime = beatmap.previewStartTime,
+                beatmapId = beatmap.id
+            )
+        }
+    }
+
+    // ✅ 清理資源
     DisposableEffect(Unit) {
         onDispose {
             scrollSoundPlayer?.release()
+            previewAudioManager.release()
         }
     }
 
@@ -155,7 +206,7 @@ fun SongSelectionScreen(
                                 beatmap = beatmap,
                                 isSelected = isSelected,
                                 onSelect = {
-                                    // 只負責滾動到該項目，不直接進入遊戲
+                                    // 只負責滾動到該項目
                                     if (!isSelected) {
                                         coroutineScope.launch {
                                             listState.animateScrollToItem(index)
@@ -183,7 +234,11 @@ fun SongSelectionScreen(
 
         // 左上角返回按鈕
         IconButton(
-            onClick = onBack,
+            onClick = {
+                // ✅ 返回時停止試聽音樂
+                previewAudioManager.stopImmediately()
+                onBack()
+            },
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
@@ -207,18 +262,18 @@ fun SongSelectionScreen(
         // 右下角操作按鈕
         GameActionButtons(
             onStartGame = {
-                // 開始遊戲 - 使用當前選中的歌曲
+                // ✅ 開始遊戲時停止試聽音樂
+                previewAudioManager.stopImmediately()
                 selectedBeatmap?.let { onSongSelected(it.id) }
             },
             onShowExample = {
                 // TODO: 實現遊玩範例邏輯
-                // 可以播放示範影片或進入教學模式
             },
             isGameStartEnabled = selectedBeatmap != null,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
-                .fillMaxWidth(0.45f)  // 加寬按鈕區域
+                .fillMaxWidth(0.45f)
         )
     }
 }

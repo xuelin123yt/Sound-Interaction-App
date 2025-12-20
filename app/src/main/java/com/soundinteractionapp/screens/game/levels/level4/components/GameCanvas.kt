@@ -378,7 +378,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
     val startY = note.y * scaleY + offsetY
     val radius = 80f
 
-    // ✅ 根據 curveType 生成正確的路徑點
     val pathPoints = generateSliderPath(note, scaleX, scaleY, offsetX, offsetY)
 
     if (pathPoints.size > 1) {
@@ -389,7 +388,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
             }
         }
 
-        // 繪製滑條背景
         drawPath(
             path = path,
             color = Color.Black.copy(alpha = 0.5f * fadeAlpha),
@@ -400,7 +398,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
             )
         )
 
-        // 繪製滑條主體
         drawPath(
             path = path,
             color = Color(0xFF64B5F6).copy(alpha = 0.9f * fadeAlpha),
@@ -411,19 +408,48 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
             )
         )
 
-        // 繪製增強的折返箭頭
+        // ✅ 先取得 comboColor（在繪製判定圈之前）
+        val comboColor = LevelColors.COMBO_COLORS.getOrNull(note.comboColor)
+            ?: LevelColors.COMBO_COLORS.first()
+
+        // ✅ 繪製折返點/終點的多層判定圈
         if (note.slides > 1) {
             val endPoint = pathPoints.last()
-            drawEnhancedReverseArrow(
+            val secondLastPoint = if (pathPoints.size >= 2) {
+                pathPoints[pathPoints.size - 2]
+            } else {
+                pathPoints.first()
+            }
+
+            drawEnhancedJudgmentCircle(
                 position = endPoint,
-                previousPoint = pathPoints[pathPoints.size - 2],
+                previousPoint = secondLastPoint,
                 radius = radius,
                 alpha = fadeAlpha,
-                currentTime = currentTime
+                currentTime = currentTime,
+                isReverse = true,
+                comboColor = comboColor
+            )
+        } else {
+            val endPoint = pathPoints.last()
+            val secondLastPoint = if (pathPoints.size >= 2) {
+                pathPoints[pathPoints.size - 2]
+            } else {
+                pathPoints.first()
+            }
+
+            drawEnhancedJudgmentCircle(
+                position = endPoint,
+                previousPoint = secondLastPoint,
+                radius = radius,
+                alpha = fadeAlpha,
+                currentTime = currentTime,
+                isReverse = false,
+                comboColor = comboColor
             )
         }
 
-        // 繪製跟隨球體（帶脈動動畫）
+        // ✅ 滑條球的繪製（改為使用主題色）
         if (isActive && sliderProgress > 0f && sliderProgress < 1f) {
             val ballPosition = NoteHandler.getSliderPositionAtProgress(note, sliderProgress)
             val scaledBallPos = Offset(
@@ -431,13 +457,24 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
                 ballPosition.y * scaleY + offsetY
             )
 
-            // 快速脈動動畫：週期 300ms
             val pulsePhase = (currentTime % 300) / 300f
             val pulseScale = 1f + sin(pulsePhase * 2f * PI.toFloat()) * 0.15f
 
-            val progressColor = if (isFollowing) Color(0xFF00FF00) else Color(0xFFFF9800)
+            // ✅ 使用主題色，根據是否跟隨調整亮度
+            val baseColor = Color(comboColor)
+            val progressColor = if (isFollowing) {
+                // 跟隨時：使用較亮的主題色
+                Color(
+                    red = (baseColor.red * 1.2f).coerceIn(0f, 1f),
+                    green = (baseColor.green * 1.2f).coerceIn(0f, 1f),
+                    blue = (baseColor.blue * 1.2f).coerceIn(0f, 1f),
+                    alpha = 1f
+                )
+            } else {
+                // 未跟隨時：使用原始主題色
+                baseColor
+            }
 
-            // 外圈光暈
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
@@ -451,7 +488,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
                 center = scaledBallPos
             )
 
-            // 主球體（跟隨脈動）
             drawCircle(
                 color = Color.White.copy(alpha = fadeAlpha),
                 radius = radius * 0.7f * pulseScale,
@@ -464,7 +500,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
                 center = scaledBallPos
             )
 
-            // 邊框
             drawCircle(
                 color = Color.White.copy(alpha = fadeAlpha),
                 radius = radius * 0.7f * pulseScale,
@@ -474,7 +509,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
         }
     }
 
-    // 繪製 approach circle
+    // 起點圓圈繪製
     if (!isActive) {
         val approachScale = 1f + (3f * (1f - progress.coerceIn(0f, 1f)))
         val approachRadius = radius * approachScale
@@ -488,8 +523,8 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
         )
     }
 
-    // 繪製起始圓圈
-    val comboColor = LevelColors.COMBO_COLORS[note.comboColor]
+    val comboColor = LevelColors.COMBO_COLORS.getOrNull(note.comboColor)
+        ?: LevelColors.COMBO_COLORS.first()
 
     drawCircle(
         color = Color(comboColor).copy(alpha = 0.3f * fadeAlpha),
@@ -539,7 +574,134 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSliderNote(
     }
 }
 
-// ✅ 核心修復：根據曲線類型生成正確的路徑
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawEnhancedJudgmentCircle(
+    position: Offset,
+    previousPoint: Offset,
+    radius: Float,
+    alpha: Float,
+    currentTime: Long,
+    isReverse: Boolean,
+    comboColor: Long
+) {
+    val angle = atan2(
+        (position.y - previousPoint.y).toDouble(),
+        (position.x - previousPoint.x).toDouble()
+    ).toFloat() * (180f / PI.toFloat())
+
+    val pulsePhase = (currentTime % 800) / 800f
+    val pulseScale = 1f + sin(pulsePhase * 2f * PI.toFloat()) * 0.08f
+
+    val circleColor = Color(comboColor)
+
+    val glowRadius = radius * 2.2f * pulseScale
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                circleColor.copy(alpha = 0.4f * alpha),
+                circleColor.copy(alpha = 0.15f * alpha),
+                Color.Transparent
+            ),
+            center = position,
+            radius = glowRadius
+        ),
+        radius = glowRadius,
+        center = position
+    )
+
+    drawCircle(
+        color = circleColor.copy(alpha = 0.9f * alpha),
+        radius = radius * 1.5f * pulseScale,
+        center = position,
+        style = Stroke(width = 10f)
+    )
+
+    drawCircle(
+        color = Color.White.copy(alpha = 0.8f * alpha),
+        radius = radius * 1.2f,
+        center = position,
+        style = Stroke(width = 6f)
+    )
+
+    if (isReverse) {
+        rotate(angle + 180f, position) {
+            val triangleSize = radius * 0.5f * pulseScale
+
+            val leftTrianglePath = Path().apply {
+                moveTo(position.x - 15f, position.y)
+                lineTo(position.x - 15f - triangleSize, position.y - triangleSize * 0.8f)
+                lineTo(position.x - 15f - triangleSize, position.y + triangleSize * 0.8f)
+                close()
+            }
+
+            val rightTrianglePath = Path().apply {
+                moveTo(position.x + 15f, position.y)
+                lineTo(position.x + 15f - triangleSize, position.y - triangleSize * 0.8f)
+                lineTo(position.x + 15f - triangleSize, position.y + triangleSize * 0.8f)
+                close()
+            }
+
+            drawPath(
+                path = leftTrianglePath,
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = alpha),
+                        circleColor.copy(alpha = 0.6f * alpha)
+                    ),
+                    center = position,
+                    radius = triangleSize * 2
+                )
+            )
+
+            drawPath(
+                path = rightTrianglePath,
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = alpha),
+                        circleColor.copy(alpha = 0.6f * alpha)
+                    ),
+                    center = position,
+                    radius = triangleSize * 2
+                )
+            )
+
+            drawPath(
+                path = leftTrianglePath,
+                color = circleColor.copy(alpha = alpha),
+                style = Stroke(width = 3f * pulseScale)
+            )
+
+            drawPath(
+                path = rightTrianglePath,
+                color = circleColor.copy(alpha = alpha),
+                style = Stroke(width = 3f * pulseScale)
+            )
+        }
+    } else {
+        drawCircle(
+            color = circleColor.copy(alpha = 0.8f * alpha),
+            radius = radius * 0.3f * pulseScale,
+            center = position
+        )
+
+        drawCircle(
+            color = Color.White.copy(alpha = alpha),
+            radius = radius * 0.2f,
+            center = position
+        )
+    }
+
+    val extraGlowPhase = ((currentTime % 1200) / 1200f)
+    val extraGlowAlpha = (1f - extraGlowPhase) * 0.3f * alpha
+    val extraGlowScale = 1f + extraGlowPhase * 0.5f
+
+    drawCircle(
+        color = circleColor.copy(alpha = extraGlowAlpha),
+        radius = radius * 1.5f * extraGlowScale,
+        center = position,
+        style = Stroke(width = 4f)
+    )
+}
+
 private fun generateSliderPath(
     note: Note,
     scaleX: Float,
@@ -554,7 +716,6 @@ private fun generateSliderPath(
 
     if (controlPoints.size < 2) return listOf(Offset(note.x * scaleX + offsetX, note.y * scaleY + offsetY))
 
-    // ✅ 根據不同的曲線類型使用不同的插值方法
     val interpolatedPoints = when (note.curveType) {
         CurveType.LINEAR -> interpolateLinear(controlPoints)
         CurveType.PERFECT -> interpolatePerfectCircle(controlPoints)
@@ -562,13 +723,11 @@ private fun generateSliderPath(
         CurveType.CATMULL -> interpolateCatmullRom(controlPoints)
     }
 
-    // 縮放到螢幕座標
     return interpolatedPoints.map { point ->
         Offset(point.x * scaleX + offsetX, point.y * scaleY + offsetY)
     }
 }
 
-// ✅ LINEAR: 直線插值
 private fun interpolateLinear(points: List<Offset>): List<Offset> {
     val result = mutableListOf<Offset>()
     val segments = 50
@@ -586,7 +745,6 @@ private fun interpolateLinear(points: List<Offset>): List<Offset> {
     return result
 }
 
-// ✅ PERFECT: 圓弧插值（通過3點的圓）
 private fun interpolatePerfectCircle(points: List<Offset>): List<Offset> {
     if (points.size < 3) return interpolateLinear(points)
 
@@ -594,20 +752,16 @@ private fun interpolatePerfectCircle(points: List<Offset>): List<Offset> {
     val p2 = points[1]
     val p3 = points[2]
 
-    // 計算圓心和半徑
     val circle = calculateCircleFrom3Points(p1, p2, p3)
     if (circle == null) {
-        // 如果三點共線，退化為直線
         return interpolateLinear(points)
     }
 
     val (center, radius) = circle
 
-    // 計算起始和結束角度
     val startAngle = atan2(p1.y - center.y, p1.x - center.x)
     val endAngle = atan2(p3.y - center.y, p3.x - center.x)
 
-    // 確定順時針還是逆時針
     val midAngle = atan2(p2.y - center.y, p2.x - center.x)
     val isClockwise = isAngleBetween(midAngle, startAngle, endAngle)
 
@@ -617,7 +771,6 @@ private fun interpolatePerfectCircle(points: List<Offset>): List<Offset> {
         if (startAngle > endAngle) startAngle - endAngle else (2 * PI + startAngle - endAngle).toFloat()
     }
 
-    // 限制最大角度為 2π
     if (angleSpan > 2 * PI) angleSpan = (2 * PI).toFloat()
 
     val result = mutableListOf<Offset>()
@@ -640,7 +793,6 @@ private fun interpolatePerfectCircle(points: List<Offset>): List<Offset> {
     return result
 }
 
-// 計算通過三點的圓
 private fun calculateCircleFrom3Points(p1: Offset, p2: Offset, p3: Offset): Pair<Offset, Float>? {
     val ax = p1.x
     val ay = p1.y
@@ -650,7 +802,7 @@ private fun calculateCircleFrom3Points(p1: Offset, p2: Offset, p3: Offset): Pair
     val cy = p3.y
 
     val d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
-    if (abs(d) < 0.001f) return null // 三點共線
+    if (abs(d) < 0.001f) return null
 
     val ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d
     val uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d
@@ -660,7 +812,6 @@ private fun calculateCircleFrom3Points(p1: Offset, p2: Offset, p3: Offset): Pair
     return Pair(Offset(ux, uy), radius)
 }
 
-// 判斷角度是否在區間內
 private fun isAngleBetween(angle: Float, start: Float, end: Float): Boolean {
     val normalizedAngle = normalizeAngle(angle)
     val normalizedStart = normalizeAngle(start)
@@ -679,7 +830,6 @@ private fun normalizeAngle(angle: Float): Float {
     return normalized
 }
 
-// ✅ BEZIER: 貝茲曲線插值
 private fun interpolateBezier(points: List<Offset>): List<Offset> {
     if (points.size < 2) return points
     if (points.size == 2) return interpolateLinear(points)
@@ -695,7 +845,6 @@ private fun interpolateBezier(points: List<Offset>): List<Offset> {
     return result
 }
 
-// De Casteljau 演算法計算 Bezier 曲線上的點
 private fun evaluateBezier(points: List<Offset>, t: Float): Offset {
     var tempPoints = points.toMutableList()
 
@@ -713,7 +862,6 @@ private fun evaluateBezier(points: List<Offset>, t: Float): Offset {
     return tempPoints[0]
 }
 
-// ✅ CATMULL: Catmull-Rom 曲線插值
 private fun interpolateCatmullRom(points: List<Offset>): List<Offset> {
     if (points.size < 2) return points
     if (points.size == 2) return interpolateLinear(points)
@@ -755,65 +903,4 @@ private fun catmullRom(p0: Offset, p1: Offset, p2: Offset, p3: Offset, t: Float)
             )
 
     return Offset(x, y)
-}
-
-// 增強的折返箭頭
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawEnhancedReverseArrow(
-    position: Offset,
-    previousPoint: Offset,
-    radius: Float,
-    alpha: Float,
-    currentTime: Long
-) {
-    val angle = atan2(
-        (position.y - previousPoint.y).toDouble(),
-        (position.x - previousPoint.x).toDouble()
-    ).toFloat() * (180f / PI.toFloat())
-
-    // 脈動效果
-    val pulsePhase = (currentTime % 500) / 500f
-    val pulseScale = 1f + sin(pulsePhase * 2f * PI.toFloat()) * 0.2f
-
-    rotate(angle, position) {
-        // 黃色發光背景
-        val glowPath = Path().apply {
-            moveTo(position.x, position.y)
-            lineTo(position.x - 45f * pulseScale, position.y - 30f * pulseScale)
-            lineTo(position.x - 45f * pulseScale, position.y + 30f * pulseScale)
-            close()
-        }
-
-        drawPath(
-            path = glowPath,
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFFFFD700).copy(alpha = 0.8f * alpha),
-                    Color(0xFFFFD700).copy(alpha = 0.3f * alpha)
-                ),
-                center = position,
-                radius = 60f * pulseScale
-            )
-        )
-
-        // 主箭頭
-        val arrowPath = Path().apply {
-            moveTo(position.x, position.y)
-            lineTo(position.x - 40f * pulseScale, position.y - 25f * pulseScale)
-            lineTo(position.x - 40f * pulseScale, position.y + 25f * pulseScale)
-            close()
-        }
-
-        drawPath(
-            path = arrowPath,
-            color = Color.White.copy(alpha = alpha),
-            style = Fill
-        )
-
-        // 邊框
-        drawPath(
-            path = arrowPath,
-            color = Color(0xFFFFD700).copy(alpha = alpha),
-            style = Stroke(width = 5f * pulseScale)
-        )
-    }
 }

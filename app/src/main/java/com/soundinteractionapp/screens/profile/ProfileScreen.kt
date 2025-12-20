@@ -204,8 +204,9 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
                 color = Color(0xFFEEEEEE)
             )
 
+            // Level 1
             Text(
-                "🎵 關卡 1: 跟著按",
+                "🎵 關卡 1: 料理鼠王",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Gray
@@ -237,8 +238,9 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
+            // Level 2
             Text(
-                "🎹 關卡 2: 鋼琴節奏",
+                "🎹 關卡 2: 鋼琴演奏",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Gray
@@ -270,8 +272,9 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
+            // Level 3
             Text(
-                "🎤 關卡 3: 音高控制",
+                "🎤 關卡 3: 聲控飛行",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Gray
@@ -281,17 +284,20 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
+            // ========== ✅ Level 4: 補上第五首 ==========
             Text(
                 "🎵 關卡 4: 音遊模式",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Gray
             )
+
             Spacer(Modifier.height(8.dp))
-            ScoreRowItem("哆啦A夢 主題曲", scores.level4Osu01, Color(0xFF9C27B0))
-            ScoreRowItem("神魔之塔 主題曲（夜）", scores.level4Osu02, Color(0xFF673AB7))
-            ScoreRowItem("能看見海的街道", scores.level4Osu03, Color(0xFF3F51B5))
-            ScoreRowItem("伴隨著你 (純音樂版)", scores.level4Osu04, Color(0xFF2196F3))
+            ScoreRowItem("哆啦A夢 主題曲", scores.level4Osu01, Color(0xFF81D4FA))
+            ScoreRowItem("神魔之塔 主題曲（夜）", scores.level4Osu02, Color(0xFFFFCC80))
+            ScoreRowItem("Ib 記憶", scores.level4Osu05, Color(0xFFB39DDB))
+            ScoreRowItem("打上花火", scores.level4Osu04, Color(0xFFFFAB91))
+            ScoreRowItem("能看見海的街道", scores.level4Osu03, Color(0xFFA5D6A7))
 
             Row(
                 modifier = Modifier

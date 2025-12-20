@@ -50,9 +50,9 @@ data class GameMenuItem(
 )
 
 // =====================================================
-// 🎨 文字描邊效果
+// 🎨 文字描邊效果 (遊戲模式專用)
 // =====================================================
-fun textStrokeStyleGame(fontSize: androidx.compose.ui.unit.TextUnit, fontWeight: FontWeight = FontWeight.Normal): TextStyle {
+fun gameTextStrokeStyle(fontSize: androidx.compose.ui.unit.TextUnit, fontWeight: FontWeight = FontWeight.Normal): TextStyle {
     return TextStyle(
         fontSize = fontSize,
         fontWeight = fontWeight,
@@ -81,25 +81,25 @@ fun GameModeScreenContent(
         listOf(
             GameMenuItem(
                 id = 1,
-                categoryName = "跟著按按鈕",
+                categoryName = "料理鼠王",
                 icon = "✋",
                 primaryColor = Color(0xFFFF7043),
                 secondaryColor = Color(0xFFFFAB91),
-                description = "聽節奏,跟著按",
+                description = "聽節奏，打老鼠",
                 route = Screen.GameLevel1.route
             ),
             GameMenuItem(
                 id = 2,
-                categoryName = "找出小動物",
+                categoryName = "鋼琴演奏",
                 icon = "🐾",
                 primaryColor = Color(0xFF42A5F5),
                 secondaryColor = Color(0xFF90CAF9),
-                description = "是誰在發出聲音?",
+                description = "利用鋼琴創造舞台",
                 route = Screen.GameLevel2.route
             ),
             GameMenuItem(
                 id = 3,
-                categoryName = "聲控鳥飛行",
+                categoryName = "聲控飛行",
                 icon = "🐦",
                 primaryColor = Color(0xFF66BB6A),
                 secondaryColor = Color(0xFFA5D6A7),
@@ -108,11 +108,11 @@ fun GameModeScreenContent(
             ),
             GameMenuItem(
                 id = 4,
-                categoryName = "創作小樂曲",
+                categoryName = "音樂節奏",
                 icon = "🎵",
                 primaryColor = Color(0xFFAB47BC),
                 secondaryColor = Color(0xFFCE93D8),
-                description = "自由發揮你的創意",
+                description = "隨著音樂一起消散吧",
                 route = Screen.GameLevel4.route
             )
         )
@@ -128,13 +128,12 @@ fun GameModeScreenContent(
             modifier = Modifier.fillMaxSize()
         ) {
             // 頂部導航列
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(16.dp)
             ) {
+                // 左側返回按鈕
                 Button(
                     onClick = {
                         if (isNavigating) return@Button
@@ -146,7 +145,9 @@ fun GameModeScreenContent(
                         containerColor = Color(0xFFE65100),
                         disabledContainerColor = Color(0xFFE65100).copy(alpha = 0.7f)
                     ),
-                    modifier = Modifier.height(50.dp),
+                    modifier = Modifier
+                        .height(50.dp)
+                        .align(Alignment.CenterStart),
                     shape = RoundedCornerShape(12.dp),
                     enabled = !isNavigating
                 ) {
@@ -155,21 +156,26 @@ fun GameModeScreenContent(
                     Text("返回", style = MaterialTheme.typography.titleMedium)
                 }
 
+                // 中央標題
                 Text(
                     "🎮 遊戲訓練模式 🎮",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
                     color = Color(0xFFE65100),
-                    letterSpacing = 1.sp
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.align(Alignment.Center)
                 )
 
+                // 右側排名按鈕
                 IconButton(
                     onClick = {
                         if (!isNavigating) {
                             showRankingDialog = true
                         }
                     },
-                    modifier = Modifier.size(50.dp)
+                    modifier = Modifier
+                        .size(50.dp)
+                        .align(Alignment.CenterEnd)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.EmojiEvents,
@@ -187,33 +193,39 @@ fun GameModeScreenContent(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(350.dp),
-                    contentPadding = PaddingValues(horizontal = 32.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    itemsIndexed(menuItems) { index, item ->
-                        GameMenuItemCard(
-                            item = item,
-                            isSelected = selectedIndex == index,
-                            onClick = {
-                                if (selectedIndex == index) {
-                                    // 點擊已選中項目 -> 進入關卡
-                                    if (!isNavigating) {
-                                        isNavigating = true
+                    LazyRow(
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .height(350.dp),
+                        contentPadding = PaddingValues(horizontal = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        itemsIndexed(menuItems) { index, item ->
+                            GameMenuItemCard(
+                                item = item,
+                                isSelected = selectedIndex == index,
+                                onClick = {
+                                    if (selectedIndex == index) {
+                                        // 點擊已選中項目 -> 進入關卡
+                                        if (!isNavigating) {
+                                            isNavigating = true
+                                            soundManager.playSFX("options2")
+                                            onNavigateToLevel(item.route)
+                                        }
+                                    } else {
+                                        // 點擊其他項目 -> 展開
                                         soundManager.playSFX("options2")
-                                        onNavigateToLevel(item.route)
+                                        selectedIndex = index
                                     }
-                                } else {
-                                    // 點擊其他項目 -> 展開
-                                    soundManager.playSFX("options2")
-                                    selectedIndex = index
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -296,9 +308,9 @@ fun GameMenuItemCard(
             )
     ) {
         if (isSelected) {
-            ExpandedContentGame(item)
+            GameExpandedContent(item)
         } else {
-            CollapsedContentGame(item)
+            GameCollapsedContent(item)
         }
     }
 }
@@ -307,7 +319,7 @@ fun GameMenuItemCard(
 // 📖 展開狀態內容
 // =====================================================
 @Composable
-fun ExpandedContentGame(item: GameMenuItem) {
+fun GameExpandedContent(item: GameMenuItem) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -326,7 +338,7 @@ fun ExpandedContentGame(item: GameMenuItem) {
         ) {
             Text(
                 text = "關卡 ${item.id}",
-                style = textStrokeStyleGame(16.sp, FontWeight.Bold),
+                style = gameTextStrokeStyle(16.sp, FontWeight.Bold),
                 color = Color.White.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center
             )
@@ -335,7 +347,7 @@ fun ExpandedContentGame(item: GameMenuItem) {
 
             Text(
                 text = item.categoryName,
-                style = textStrokeStyleGame(22.sp, FontWeight.Bold),
+                style = gameTextStrokeStyle(22.sp, FontWeight.Bold),
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
@@ -344,7 +356,7 @@ fun ExpandedContentGame(item: GameMenuItem) {
 
             Text(
                 text = item.description,
-                style = textStrokeStyleGame(14.sp),
+                style = gameTextStrokeStyle(14.sp),
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 8.dp)
@@ -357,7 +369,7 @@ fun ExpandedContentGame(item: GameMenuItem) {
 // 📝 收合狀態內容
 // =====================================================
 @Composable
-fun CollapsedContentGame(item: GameMenuItem) {
+fun GameCollapsedContent(item: GameMenuItem) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -374,7 +386,7 @@ fun CollapsedContentGame(item: GameMenuItem) {
         item.categoryName.forEach { char ->
             Text(
                 text = char.toString(),
-                style = textStrokeStyleGame(20.sp, FontWeight.Bold),
+                style = gameTextStrokeStyle(20.sp, FontWeight.Bold),
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(vertical = 2.dp)

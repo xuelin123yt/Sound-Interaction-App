@@ -145,6 +145,9 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.database)
 
+    // ✅ Lottie 動畫支援（新增）
+    implementation("com.airbnb.android:lottie-compose:6.0.0")
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -226,20 +226,20 @@ fun GameInstructionsDialog(onDismiss: () -> Unit) {
                 ) {
                     InstructionItem(
                         number = "1",
-                        title = "選擇歌曲",
-                        description = "從左側列表選擇你想要挑戰的歌曲"
+                        title = "跟著節奏，準備打擊",
+                        description = "音樂開始後，音符會依節奏出現在畫面上，請留意節拍與接近判定線的時機"
                     )
 
                     InstructionItem(
                         number = "2",
-                        title = "跟隨節奏",
-                        description = "音符會從上方落下，在正確時機點擊對應按鈕"
+                        title = "在正確時機點擊",
+                        description = "當音符進入判定範圍時，點擊對應按鍵或畫面。點擊的準確度將決定判定結果（Perfect／Good／Miss）"
                     )
 
                     InstructionItem(
                         number = "3",
-                        title = "獲得分數",
-                        description = "Perfect > Great > Good > Miss，盡可能打出完美節奏！"
+                        title = "累積連擊與高分",
+                        description = "連續成功打擊可累積連擊數並提升分數，錯失音符將中斷連擊。完成歌曲後，系統會依表現給予評價。"
                     )
                 }
 

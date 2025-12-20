@@ -1,5 +1,6 @@
 package com.soundinteractionapp.screens.game.levels.level4.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -7,13 +8,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.airbnb.lottie.compose.*
+import com.soundinteractionapp.R
 import com.soundinteractionapp.data.RankingViewModel
 
 @Composable
@@ -26,21 +31,29 @@ fun ResultScreen(
     goodCount: Int,
     missCount: Int,
     hasNextLevel: Boolean,
-    beatmapId: Int,  // ✅ 新增：譜面 ID
+    beatmapId: Int,
     onNextLevel: () -> Unit,
     onRetry: () -> Unit,
     onExit: () -> Unit,
-    rankingViewModel: RankingViewModel = viewModel()  // ✅ 新增：排行榜 ViewModel
+    rankingViewModel: RankingViewModel = viewModel()
 ) {
-    // ========== ✅ 遊戲結束時提交分數 ==========
-    LaunchedEffect(score) {
-        // 根據 beatmapId 決定 scoreId
-        // beatmapId: 1 -> scoreId: 41 (OSU_01)
-        // beatmapId: 2 -> scoreId: 42 (OSU_02)
-        // beatmapId: 3 -> scoreId: 43 (OSU_03)
-        // beatmapId: 4 -> scoreId: 44 (OSU_04)
+    // ✅ Lottie 動畫設定（使用 JSON 格式）- 只播放一次
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.confetti) // confetti.json
+    )
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = 1 // 只播放一次
+    )
+
+    // ✅ 遊戲結束時儲存分數（只執行一次）
+    LaunchedEffect(Unit) {
         val scoreId = 40 + beatmapId
-        rankingViewModel.updateHighScore(scoreId, score)
+        Log.d("ResultScreen", "遊戲結束 - beatmapId=$beatmapId, scoreId=$scoreId, score=$score")
+
+        if (score > 0) {
+            rankingViewModel.updateHighScore(scoreId, score)
+        }
     }
 
     Box(
@@ -66,7 +79,6 @@ fun ResultScreen(
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 標題
                 Text(
                     text = "遊戲結束",
                     fontSize = 24.sp,
@@ -76,7 +88,6 @@ fun ResultScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 最終分數
                 Text(
                     text = "最終分數",
                     fontSize = 14.sp,
@@ -91,7 +102,6 @@ fun ResultScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 準確率和最高連擊
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -102,7 +112,6 @@ fun ResultScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 判定統計
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFF0F0F1E)
@@ -119,13 +128,11 @@ fun ResultScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 按鈕組
                 Column(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // 下一關按鈕（僅在有下一關時顯示）
                     if (hasNextLevel) {
                         Button(
                             onClick = onNextLevel,
@@ -140,7 +147,6 @@ fun ResultScreen(
                         }
                     }
 
-                    // 重新開始按鈕
                     Button(
                         onClick = onRetry,
                         colors = ButtonDefaults.buttonColors(
@@ -153,7 +159,6 @@ fun ResultScreen(
                         Text("重新開始", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    // 離開按鈕
                     Button(
                         onClick = onExit,
                         colors = ButtonDefaults.buttonColors(
@@ -170,6 +175,14 @@ fun ResultScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
+
+        // 🎉 最上層全螢幕慶祝動畫（播放一次）
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            contentScale = ContentScale.FillBounds, // 強制拉伸填滿螢幕
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
