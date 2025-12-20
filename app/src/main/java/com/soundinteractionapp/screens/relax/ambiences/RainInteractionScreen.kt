@@ -5,14 +5,14 @@ import android.net.Uri
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -32,25 +32,42 @@ fun RainInteractionScreen(
     soundManager: SoundManager
 ) {
     val context = LocalContext.current
-    var isPlaying by remember { mutableStateOf(false) }
+    var isPressing by remember { mutableStateOf(false) }
+    var bgIndex by remember { mutableIntStateOf(0) }
     var isNavigating by remember { mutableStateOf(false) }
+
+    val videoList = remember {
+        listOf(R.raw.rainbackground1, R.raw.rainbackground2, R.raw.rainbackground3)
+    }
 
     val audioPlayer = remember {
         try {
-            MediaPlayer.create(context, R.raw.rain_sound).apply {
+            MediaPlayer.create(context, R.raw.rain_sound)?.apply {
                 isLooping = true
-                setVolume(0.6f, 0.6f)
+                setVolume(0.8f, 0.8f)
             }
         } catch (e: Exception) { null }
     }
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            val videoUri = Uri.parse("android.resource://${context.packageName}/${R.raw.rain_video}")
-            setMediaItem(MediaItem.fromUri(videoUri))
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
-            prepare()
+        }
+    }
+
+    LaunchedEffect(bgIndex) {
+        val videoUri = Uri.parse("android.resource://${context.packageName}/${videoList[bgIndex]}")
+        exoPlayer.setMediaItem(MediaItem.fromUri(videoUri))
+        exoPlayer.prepare()
+        exoPlayer.play()
+    }
+
+    LaunchedEffect(isPressing) {
+        audioPlayer?.let { player ->
+            try {
+                if (isPressing) player.start() else if (player.isPlaying) player.pause()
+            } catch (e: Exception) { }
         }
     }
 
@@ -61,19 +78,22 @@ fun RainInteractionScreen(
         }
     }
 
-    LaunchedEffect(isPlaying) {
-        if (isPlaying) {
-            exoPlayer.play()
-            audioPlayer?.start()
-        } else {
-            exoPlayer.pause()
-            if (audioPlayer?.isPlaying == true) {
-                audioPlayer.pause()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        try {
+                            isPressing = true
+                            tryAwaitRelease()
+                        } finally {
+                            isPressing = false
+                        }
+                    }
+                )
             }
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    ) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -86,62 +106,29 @@ fun RainInteractionScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    if (!isPlaying) isPlaying = true
-                }
-        ) {
-            if (!isPlaying) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "點擊畫面感受雨聲",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Color.White,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .align(Alignment.TopStart),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            Button(
-                onClick = {
-                    if (isNavigating) return@Button
-                    isNavigating = true
-                    onNavigateBack()
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                    disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
-                ),
-                modifier = Modifier.height(50.dp),
-                enabled = !isNavigating
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(24.dp).align(Alignment.TopCenter),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("← 返回自由探索", style = MaterialTheme.typography.bodyLarge)
-            }
-        }
+                Button(
+                    onClick = { if (!isNavigating) { isNavigating = true; onNavigateBack() } },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f))
+                ) { Text("← 返回", color = Color.White) }
 
-        if (isPlaying) {
-            Button(
-                onClick = { isPlaying = false },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(32.dp)
-            ) {
-                Text("暫停雨聲")
+                Button(
+                    onClick = { bgIndex = (bgIndex + 1) % videoList.size },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
+                ) { Text("切換場景 (${bgIndex + 1}/3)") }
+            }
+
+            if (!isPressing) {
+                Text(
+                    text = "長按螢幕感受雨聲...",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
         }
     }

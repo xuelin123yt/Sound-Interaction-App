@@ -93,6 +93,12 @@ class SoundManager(private val context: Context) {
             loadSound("options3", R.raw.options3)
             loadSound("osu_hit", R.raw.osu_hit_sound)
             loadSound("osu_miss", R.raw.osu_miss_sound)
+
+            loadSound("dog_bark1", R.raw.dog_bark1)
+            loadSound("dog_bark2", R.raw.dog_bark3)
+            loadSound("dog_bark3", R.raw.dog_bark2)
+
+            loadSound("bird_single", R.raw.bird_sound)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -319,5 +325,24 @@ class SoundManager(private val context: Context) {
     fun release() {
         stopBgm()
         soundPool.release()
+    }
+
+    /**
+     * ✅ 新增：直接播放音效（不受設定頁面的 SFX/Master 音量滑桿影響）
+     * 用途：給狗狗互動使用，之後可改為接收「模式一總音量」
+     */
+    fun playDirectSound(name: String) {
+        val soundId = soundMap[name]
+        if (soundId != null && soundId != 0) {
+            // 這裡直接設定 1.0f (最大聲)，完全忽略 masterVolume 和 sfxVolume
+            // 如果你希望「靜音開關」還是有效，可以加個判斷；
+            // 如果希望連靜音都無視，就直接傳入 1.0f
+
+            // 這裡我寫保留「靜音開關」的功能，但「音量滑桿」無效
+            // 如果你想連靜音開關都不管，把 if 去掉直接用 1.0f 即可
+            val finalVolume = if (isMasterMuted || isSfxMuted) 0f else 1.0f
+
+            soundPool.play(soundId, finalVolume, finalVolume, 1, 0, 1.0f)
+        }
     }
 }

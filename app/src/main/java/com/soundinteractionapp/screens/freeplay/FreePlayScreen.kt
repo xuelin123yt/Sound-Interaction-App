@@ -96,7 +96,7 @@ fun FreePlayScreenContent(
                 primaryColor = Color(0xFFA1887F),
                 secondaryColor = Color(0xFFBCAAA4),
                 description = "忠誠的汪汪聲",
-                soundResId = R.raw.dog_barking,
+                soundResId = R.raw.dog_bark1,
                 onNavigate = onNavigateToDogInteraction
             ),
             TaikoMenuItem(
