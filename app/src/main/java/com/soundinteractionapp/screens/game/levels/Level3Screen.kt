@@ -132,38 +132,16 @@ fun Level3PitchScreen(
     LaunchedEffect(isGameOver) {
         if (isGameOver) {
             rankingViewModel.onGameFinished(levelId = 3, finalScore = score)
-            Log.d("Level3", "遊戲結束,嘗試更新分數: $score")
             soundManager.stopMusic()
         }
     }
 
-    // ✅ 背景音樂處理
     val musicList = listOf(R.raw.music1, R.raw.music2, R.raw.music3)
     val randomMusicResId = remember { musicList.random() }
 
     DisposableEffect(Unit) {
-        // ✅ 使用 playGameMusic() 播放背景音樂（現在支持循環播放）
         soundManager.playGameMusic(randomMusicResId, VolumeKeys.LEVEL3_MUSIC)
-
-        onDispose {
-            soundManager.stopMusic()
-        }
-    }
-
-    val soundPool = remember {
-        SoundPool.Builder()
-            .setMaxStreams(5)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            .build()
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { soundPool.release() }
+        onDispose { soundManager.stopMusic() }
     }
 
     val birdSprites = listOf(
@@ -222,13 +200,8 @@ fun Level3PitchScreen(
             val gameOverFlag = state[2] > 0.5f
             val newHp = if (state.size >= 5) state[4].toInt() else currentHp
 
-            if (newScore > score) {
-                soundManager.playGameSFX("level3_correct", VolumeKeys.LEVEL3_EFFECT)
-            }
-
-            if (newHp < currentHp) {
-                soundManager.playGameSFX("level3_hit", VolumeKeys.LEVEL3_EFFECT)
-            }
+            if (newScore > score) soundManager.playGameSFX("level3_correct", VolumeKeys.LEVEL3_EFFECT)
+            if (newHp < currentHp) soundManager.playGameSFX("level3_hit", VolumeKeys.LEVEL3_EFFECT)
 
             score = newScore
             currentHp = newHp
@@ -239,9 +212,7 @@ fun Level3PitchScreen(
             }
 
             frameCounter++
-            if (frameCounter % 5 == 0) {
-                currentFrameIndex = (currentFrameIndex + 1) % birdSprites.size
-            }
+            if (frameCounter % 5 == 0) currentFrameIndex = (currentFrameIndex + 1) % birdSprites.size
             delay(16)
         }
     }
@@ -249,23 +220,26 @@ fun Level3PitchScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         VideoBackground(videoResId = R.raw.sky)
 
+        // ✅ 強化版 Canvas 繪製水管
         Canvas(modifier = Modifier.fillMaxSize()) {
             val scaleFactor = size.height / 2000f
 
             scale(scale = scaleFactor, pivot = Offset.Zero) {
                 val pipeWidth = 300f
-                val rimHeight = 80f
-                val rimOverhang = 20f
-
-                val pipeBrush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF558946), Color(0xFF96E668), Color(0xFF558946)),
-                    startX = 0f, endX = pipeWidth
-                )
-                val rimBrush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF558946), Color(0xFFAAFFA0), Color(0xFF558946)),
-                    startX = -rimOverhang, endX = pipeWidth + rimOverhang
-                )
+                val rimHeight = 90f
+                val rimOverhang = 25f
                 val borderColor = Color(0xFF2F4F2F)
+                val highlightLineColor = Color.White.copy(alpha = 0.4f)
+
+                // 經典 3D 圓柱漸層
+                val pipeBrush = Brush.horizontalGradient(
+                    0.0f to Color(0xFF437027),
+                    0.2f to Color(0xFF73BF2E),
+                    0.4f to Color(0xFF96E668),
+                    0.5f to Color(0xFFFFFFFF), // 正中央高亮
+                    0.7f to Color(0xFF73BF2E),
+                    1.0f to Color(0xFF558022)
+                )
 
                 for (i in obstacles.indices step 3) {
                     if (i + 2 < obstacles.size) {
@@ -273,34 +247,54 @@ fun Level3PitchScreen(
                         val gapY = obstacles[i+1]
                         val gapHeight = obstacles[i+2]
 
+                        // --- 上半部水管 ---
                         val topPipeBottom = gapY - gapHeight / 2
                         if (topPipeBottom > 0) {
+                            // 管身
                             drawRect(brush = pipeBrush, topLeft = Offset(pipeX, 0f), size = Size(pipeWidth, topPipeBottom - rimHeight))
-                            drawRect(color = borderColor, topLeft = Offset(pipeX, 0f), size = Size(pipeWidth, topPipeBottom - rimHeight), style = Stroke(width = 6f))
-                            drawRect(brush = rimBrush, topLeft = Offset(pipeX - rimOverhang, topPipeBottom - rimHeight), size = Size(pipeWidth + rimOverhang * 2, rimHeight))
-                            drawRect(color = borderColor, topLeft = Offset(pipeX - rimOverhang, topPipeBottom - rimHeight), size = Size(pipeWidth + rimOverhang * 2, rimHeight), style = Stroke(width = 6f))
+                            drawRect(color = borderColor, topLeft = Offset(pipeX, 0f), size = Size(pipeWidth, topPipeBottom - rimHeight), style = Stroke(width = 8f))
+                            // 管身高光線
+                            drawLine(color = highlightLineColor, start = Offset(pipeX + 35f, 0f), end = Offset(pipeX + 35f, topPipeBottom - rimHeight), strokeWidth = 12f)
+
+                            // 水管口 (Rim)
+                            drawRect(brush = pipeBrush, topLeft = Offset(pipeX - rimOverhang, topPipeBottom - rimHeight), size = Size(pipeWidth + rimOverhang * 2, rimHeight))
+                            drawRect(color = borderColor, topLeft = Offset(pipeX - rimOverhang, topPipeBottom - rimHeight), size = Size(pipeWidth + rimOverhang * 2, rimHeight), style = Stroke(width = 8f))
+                            // 水管口底部陰影
+                            drawRect(color = Color.Black.copy(alpha = 0.3f), topLeft = Offset(pipeX - rimOverhang, topPipeBottom - 15f), size = Size(pipeWidth + rimOverhang * 2, 10f))
                         }
 
+                        // --- 下半部水管 ---
                         val bottomPipeTop = gapY + gapHeight / 2
+                        // 管身
                         drawRect(brush = pipeBrush, topLeft = Offset(pipeX, bottomPipeTop + rimHeight), size = Size(pipeWidth, 2000f - (bottomPipeTop + rimHeight)))
-                        drawRect(color = borderColor, topLeft = Offset(pipeX, bottomPipeTop + rimHeight), size = Size(pipeWidth, 2000f - (bottomPipeTop + rimHeight)), style = Stroke(width = 6f))
-                        drawRect(brush = rimBrush, topLeft = Offset(pipeX - rimOverhang, bottomPipeTop), size = Size(pipeWidth + rimOverhang * 2, rimHeight))
-                        drawRect(color = borderColor, topLeft = Offset(pipeX - rimOverhang, bottomPipeTop), size = Size(pipeWidth + rimOverhang * 2, rimHeight), style = Stroke(width = 6f))
+                        drawRect(color = borderColor, topLeft = Offset(pipeX, bottomPipeTop + rimHeight), size = Size(pipeWidth, 2000f - (bottomPipeTop + rimHeight)), style = Stroke(width = 8f))
+                        // 管身高光線
+                        drawLine(color = highlightLineColor, start = Offset(pipeX + 35f, bottomPipeTop + rimHeight), end = Offset(pipeX + 35f, 2000f), strokeWidth = 12f)
+
+                        // 水管口 (Rim)
+                        drawRect(brush = pipeBrush, topLeft = Offset(pipeX - rimOverhang, bottomPipeTop), size = Size(pipeWidth + rimOverhang * 2, rimHeight))
+                        drawRect(color = borderColor, topLeft = Offset(pipeX - rimOverhang, bottomPipeTop), size = Size(pipeWidth + rimOverhang * 2, rimHeight), style = Stroke(width = 8f))
+                        // 水管口頂部陰影
+                        drawRect(color = Color.Black.copy(alpha = 0.3f), topLeft = Offset(pipeX - rimOverhang, bottomPipeTop + 5f), size = Size(pipeWidth + rimOverhang * 2, 10f))
                     }
                 }
 
+                // 地面
+                drawRect(color = Color(0xFFDED895), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 200f))
+                drawRect(color = Color(0xFF73BF2E), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 30f))
+                drawRect(color = Color(0xFF2F4F2F), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 6f))
+
+                // 繪製主角鳥兒
                 val visualBirdSize = 260
                 drawImage(
                     image = birdSprites[currentFrameIndex],
                     dstOffset = IntOffset((300f - visualBirdSize/2).toInt(), (birdY - visualBirdSize/2).toInt()),
                     dstSize = IntSize(visualBirdSize, visualBirdSize)
                 )
-
-                drawRect(color = Color(0xFFDED895), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 200f))
-                drawRect(color = Color(0xFF73BF2E), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 20f))
             }
         }
 
+        // UI: 分數與血條
         Row(
             modifier = Modifier.fillMaxWidth().padding(24.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -317,154 +311,71 @@ fun Level3PitchScreen(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "HP",
-                    fontSize = 24.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = GameFont,
-                    modifier = Modifier.padding(end = 8.dp),
-                    style = TextStyle(shadow = Shadow(Color.Black, Offset(2f, 2f), 4f))
-                )
-
+                Text(text = "HP", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.Bold, fontFamily = GameFont, modifier = Modifier.padding(end = 8.dp))
                 Box(
-                    modifier = Modifier.width(200.dp).height(24.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray.copy(alpha = 0.5f))
-                        .border(2.dp, Color.White, RoundedCornerShape(12.dp))
+                    modifier = Modifier.width(200.dp).height(24.dp).clip(RoundedCornerShape(12.dp)).background(Color.Gray.copy(alpha = 0.5f)).border(2.dp, Color.White, RoundedCornerShape(12.dp))
                 ) {
                     val hpFraction = (currentHp / maxHp.toFloat()).coerceIn(0f, 1f)
-                    Box(
-                        modifier = Modifier.fillMaxHeight().fillMaxWidth(hpFraction)
-                            .background(if (currentHp < 30) Color(0xFFFF4444) else Color(0xFF44FF44))
-                    )
-                    Text(
-                        text = "$currentHp/$maxHp",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.Center),
-                        fontFamily = GameFont,
-                        style = TextStyle(shadow = Shadow(Color.Black, Offset(1f, 1f), 2f))
-                    )
+                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(hpFraction).background(if (currentHp < 30) Color(0xFFFF4444) else Color(0xFF44FF44)))
+                    Text(text = "$currentHp/$maxHp", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.align(Alignment.Center), fontFamily = GameFont)
                 }
             }
         }
 
         if (showStartHint) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "對著麥克風發出聲音!",
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    fontFamily = GameFont,
-                    style = TextStyle(shadow = Shadow(color = Color.Black, offset = Offset(4f, 4f), blurRadius = 8f))
-                )
+                Text(text = "對著麥克風發出聲音!", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = GameFont, style = TextStyle(shadow = Shadow(color = Color.Black, offset = Offset(4f, 4f), blurRadius = 8f)))
             }
         }
 
+        // 遊戲結束畫面
         if (isGameOver) {
             Box(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.85f)).clickable(enabled = false) {},
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    // ✅ 新增：用於追蹤「首次解鎖」的成就
                     var newlyUnlockedAchievements by remember { mutableStateOf<List<String>>(emptyList()) }
                     val coroutineScope = rememberCoroutineScope()
 
-                    // ✅ 結算時檢查成就
                     LaunchedEffect(Unit) {
                         coroutineScope.launch {
                             try {
                                 val achievementManager = AchievementManager()
                                 val currentScores = rankingViewModel.scores.value
-
-                                val newlyUnlocked = achievementManager.checkAndUnlockAchievements(
-                                    scoreEntry = currentScores,
-                                    hasFeedback = false,
-                                    hasAvatar = false
-                                )
-
-                                val gameRelatedAchievements = mutableListOf<String>()
-
+                                val newlyUnlocked = achievementManager.checkAndUnlockAchievements(scoreEntry = currentScores, hasFeedback = false, hasAvatar = false)
                                 if (3 in newlyUnlocked && currentScores.level3Score >= 3000) {
-                                    gameRelatedAchievements.add("Voice Flight Ace／聲控飛行高手")
+                                    newlyUnlockedAchievements = listOf("Voice Flight Ace／聲控飛行高手")
                                 }
-
-                                if (gameRelatedAchievements.isNotEmpty()) {
-                                    newlyUnlockedAchievements = gameRelatedAchievements
-                                    android.util.Log.d("Level3Result", "🎉 新解鎖成就: $gameRelatedAchievements")
-                                }
-                            } catch (e: Exception) {
-                                android.util.Log.e("Level3Result", "❌ 檢查成就失敗", e)
-                            }
+                            } catch (e: Exception) { Log.e("Level3Result", "❌ 檢查成就失敗", e) }
                         }
                     }
 
-                    // ✅ 所有元素縮小 20%（原尺寸 × 0.8）
-                    Text(
-                        text = "遊戲結束!",
-                        fontSize = 48.sp,  // 原 60sp × 0.8
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFF4444),
-                        fontFamily = GameFont
-                    )
-                    Spacer(modifier = Modifier.height(19.dp))  // 原 24dp × 0.8
-                    Text(
-                        text = "血量耗盡",
-                        fontSize = 22.sp,  // 原 28sp × 0.8
-                        color = Color.Gray,
-                        fontFamily = GameFont,
-                        modifier = Modifier.padding(bottom = 13.dp)  // 原 16dp × 0.8
-                    )
-                    Text(
-                        text = "最終分數: $score",
-                        fontSize = 32.sp,  // 原 40sp × 0.8
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        fontFamily = GameFont
-                    )
+                    Text(text = "遊戲結束!", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF4444), fontFamily = GameFont)
+                    Spacer(modifier = Modifier.height(19.dp))
+                    Text(text = "血量耗盡", fontSize = 22.sp, color = Color.Gray, fontFamily = GameFont, modifier = Modifier.padding(bottom = 13.dp))
+                    Text(text = "最終分數: $score", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = GameFont)
 
-                    // ✅ 顯示新解鎖的成就（縮小 20%）
                     if (newlyUnlockedAchievements.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(19.dp))  // 原 24dp × 0.8
-
+                        Spacer(modifier = Modifier.height(19.dp))
                         newlyUnlockedAchievements.forEach { achievementName ->
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f)),
                                 border = BorderStroke(1.dp, Color(0xFF4CAF50)),
-                                modifier = Modifier.width(280.dp)  // 原 350dp × 0.8
+                                modifier = Modifier.width(280.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(10.dp),  // 原 12dp × 0.8
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("🏆", fontSize = 19.sp)  // 原 24sp × 0.8
-                                    Spacer(modifier = Modifier.width(10.dp))  // 原 12dp × 0.8
+                                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🏆", fontSize = 19.sp)
+                                    Spacer(modifier = Modifier.width(10.dp))
                                     Column {
-                                        Text(
-                                            "成就解鎖！",
-                                            fontSize = 13.sp,  // 原 16sp × 0.8
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF4CAF50)
-                                        )
-                                        Text(
-                                            achievementName,
-                                            fontSize = 11.sp,  // 原 14sp × 0.8
-                                            color = Color.White.copy(alpha = 0.8f)
-                                        )
+                                        Text("成就解鎖！", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
+                                        Text(achievementName, fontSize = 11.sp, color = Color.White.copy(alpha = 0.8f))
                                     }
                                 }
                             }
-
-                            if (achievementName != newlyUnlockedAchievements.last()) {
-                                Spacer(modifier = Modifier.height(6.dp))  // 原 8dp × 0.8
-                            }
                         }
                     }
-                    Spacer(modifier = Modifier.height(38.dp))  // 原 48dp × 0.8
+                    Spacer(modifier = Modifier.height(38.dp))
 
                     Button(
                         onClick = {
@@ -473,14 +384,11 @@ fun Level3PitchScreen(
                             soundManager.playSFX("cancel")
                             onNavigateBack()
                         },
-                        modifier = Modifier.size(width = 160.dp, height = 48.dp),  // 原 200dp × 60dp × 0.8
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.DarkGray,
-                            disabledContainerColor = Color.DarkGray.copy(alpha = 0.7f)
-                        ),
+                        modifier = Modifier.size(width = 160.dp, height = 48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
                         enabled = !isNavigating
                     ) {
-                        Text(text = "回主選單", fontSize = 16.sp, fontFamily = GameFont)  // 原 20sp × 0.8
+                        Text(text = "回主選單", fontSize = 16.sp, fontFamily = GameFont)
                     }
                 }
             }
@@ -493,10 +401,7 @@ fun Level3PitchScreen(
                     onNavigateBack()
                 },
                 modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
-                enabled = !isNavigating,
-                colors = ButtonDefaults.buttonColors(
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                )
+                enabled = !isNavigating
             ) {
                 Text(text = "退出", fontFamily = GameFont)
             }

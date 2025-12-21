@@ -3,34 +3,40 @@ package com.soundinteractionapp.utils
 import androidx.compose.ui.graphics.Color
 
 /**
- * 遊戲評分邏輯的唯一真理中心 (Single Source of Truth)
- * 所有關卡結算、排行榜顯示，都必須呼叫這裡的函式，確保標準一致。
+ * 遊戲評分邏輯 - 難度優化版
+ * 降低了等級門檻，讓使用者更容易獲得成就感。
  */
 object GameScoreUtils {
 
     /**
-     * 計算等級 (Rank)
+     * 計算等級 (Rank) - 降低難度版本
      * @param score 玩家得分
      * @param maxScore 該難度的理論滿分
      */
     fun calculateRank(score: Int, maxScore: Int): String {
-        if (score == 0) return "-"
-        if (maxScore == 0) return "C" // 防呆
+        if (score <= 0) return "-"
+        if (maxScore == 0) return "C"
 
         val percentage = score.toFloat() / maxScore.toFloat()
 
         return when {
-            score >= maxScore -> "SSS"  // 滿分 (Perfect)
-            percentage >= 0.95f -> "SS" // 95% 以上
-            percentage >= 0.90f -> "S"  // 90% 以上
-            percentage >= 0.80f -> "A"  // 80% 以上
-            percentage >= 0.70f -> "B"  // 70% 以上
-            else -> "C"                 // 低於 70%
+            // 原本需要 100%，現在 90% 以上就是最高榮譽 SSS
+            percentage >= 0.90f -> "SSS"
+            // 原本 95%，降至 80%
+            percentage >= 0.80f -> "SS"
+            // 原本 90%，降至 70%
+            percentage >= 0.70f -> "S"
+            // 原本 80%，降至 60%
+            percentage >= 0.60f -> "A"
+            // 原本 70%，降至 40%
+            percentage >= 0.40f -> "B"
+            // 低於 40% 才是 C
+            else -> "C"
         }
     }
 
     /**
-     * 根據等級取得對應顏色
+     * 根據等級取得對應顏色 (保持不變，或可微調顏色亮度)
      */
     fun getRankColor(rank: String): Color {
         return when (rank) {
@@ -43,4 +49,3 @@ object GameScoreUtils {
         }
     }
 }
-
