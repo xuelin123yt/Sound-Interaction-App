@@ -178,11 +178,11 @@ fun RegisterDialog(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // 帳號輸入框
+// 帳號輸入框
                 OutlinedTextField(
                     value = account,
                     onValueChange = { account = it; errorMessage = null },
-                    label = { Text("帳號(英數混合,至少4字元)") },
+                    label = { Text("帳號(英數混合,至少4字元)", color = Color.Black) },  // ✅ 加這行
                     leadingIcon = {
                         Icon(
                             Icons.Default.AccountCircle,
@@ -191,16 +191,22 @@ fun RegisterDialog(
                         )
                     },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(  // ✅ 加入整個 colors 區塊
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        focusedLabelColor = Color.Black,
+                        unfocusedLabelColor = Color.Black
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 密碼輸入框
+// 密碼輸入框
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it; errorMessage = null },
-                    label = { Text("密碼(至少6個字元)") },
+                    label = { Text("密碼(至少6個字元)", color = Color.Black) },  // ✅ 加這行
                     leadingIcon = {
                         Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7))
                     },
@@ -209,7 +215,8 @@ fun RegisterDialog(
                             Icon(
                                 if (passwordVisible) Icons.Default.Visibility
                                 else Icons.Default.VisibilityOff,
-                                null
+                                null,
+                                tint = Color(0xFF673AB7)  // ✅ 加這行
                             )
                         }
                     },
@@ -219,16 +226,22 @@ fun RegisterDialog(
                         PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(  // ✅ 加入整個 colors 區塊
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        focusedLabelColor = Color.Black,
+                        unfocusedLabelColor = Color.Black
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 確認密碼輸入框
+// 確認密碼輸入框
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it; errorMessage = null },
-                    label = { Text("確認密碼") },
+                    label = { Text("確認密碼", color = Color.Black) },  // ✅ 加這行
                     leadingIcon = {
                         Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7))
                     },
@@ -237,7 +250,8 @@ fun RegisterDialog(
                             Icon(
                                 if (confirmVisible) Icons.Default.Visibility
                                 else Icons.Default.VisibilityOff,
-                                null
+                                null,
+                                tint = Color(0xFF673AB7)  // ✅ 加這行
                             )
                         }
                     },
@@ -247,7 +261,13 @@ fun RegisterDialog(
                         PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(  // ✅ 加入整個 colors 區塊
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        focusedLabelColor = Color.Black,
+                        unfocusedLabelColor = Color.Black
+                    )
                 )
 
                 // 錯誤訊息顯示區域
@@ -267,7 +287,7 @@ fun RegisterDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 按鈕區域
+// 按鈕區域
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -275,38 +295,19 @@ fun RegisterDialog(
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.outlinedButtonColors(  // ✅ 加這行
+                            contentColor = Color.Black
+                        )
                     ) {
-                        Text("取消")
+                        Text("取消", color = Color.Black)  // ✅ 加 color
                     }
                     Button(
-                        onClick = {
-                            when {
-                                account.isBlank() -> errorMessage = "請輸入帳號"
-                                account.length < 4 -> errorMessage = "帳號至少需要4個字元"
-                                !account.any { it.isLetter() } -> errorMessage = "帳號需包含英文字母"
-                                !account.any { it.isDigit() } -> errorMessage = "帳號需包含數字"
-                                !account.all { it.isLetterOrDigit() } -> errorMessage = "帳號只能包含英文和數字"
-                                password.isBlank() -> errorMessage = "請輸入密碼"
-                                password.length < 6 -> errorMessage = "密碼至少需要6個字元"
-                                password != confirmPassword -> errorMessage = "兩次輸入的密碼不一致"
-                                else -> {
-                                    isLoading = true
-                                    errorMessage = null
-                                    authViewModel.signUp(account, password) { success, err ->
-                                        isLoading = false
-                                        if (!success) {
-                                            errorMessage = err ?: "註冊失敗,請稍後再試"
-                                        } else {
-                                            onDismiss()
-                                        }
-                                    }
-                                }
-                            }
-                        },
+                        onClick = { /* ... */ },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF673AB7)
+                            containerColor = Color(0xFF673AB7),
+                            contentColor = Color.White  // ✅ 加這行
                         ),
                         enabled = !isLoading
                     ) {
@@ -317,7 +318,7 @@ fun RegisterDialog(
                                 modifier = Modifier.size(18.dp)
                             )
                         } else {
-                            Text("註冊", fontWeight = FontWeight.Bold)
+                            Text("註冊", fontWeight = FontWeight.Bold, color = Color.White)  // ✅ 加 color
                         }
                     }
                 }
@@ -392,11 +393,11 @@ fun LoginDialog(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // 帳號輸入框
+// 帳號輸入框
                 OutlinedTextField(
                     value = account,
                     onValueChange = { account = it; errorMessage = null },
-                    label = { Text("帳號") },
+                    label = { Text("帳號", color = Color.Black) },  // ✅ 加這行
                     leadingIcon = {
                         Icon(
                             Icons.Default.AccountCircle,
@@ -405,16 +406,22 @@ fun LoginDialog(
                         )
                     },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(  // ✅ 加入整個 colors 區塊
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        focusedLabelColor = Color.Black,
+                        unfocusedLabelColor = Color.Black
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 密碼輸入框
+// 密碼輸入框
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it; errorMessage = null },
-                    label = { Text("密碼") },
+                    label = { Text("密碼", color = Color.Black) },  // ✅ 加這行
                     leadingIcon = {
                         Icon(Icons.Default.Lock, null, tint = Color(0xFF673AB7))
                     },
@@ -440,7 +447,13 @@ fun LoginDialog(
                         onDone = { if (!isLoading) loginAction() }
                     ),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(  // ✅ 加入整個 colors 區塊
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        focusedLabelColor = Color.Black,
+                        unfocusedLabelColor = Color.Black
+                    )
                 )
 
                 // 錯誤訊息顯示區域
@@ -460,7 +473,7 @@ fun LoginDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 按鈕區域
+// 按鈕區域
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -468,15 +481,19 @@ fun LoginDialog(
                     OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
-                        enabled = !isLoading
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.outlinedButtonColors(  // ✅ 加這行
+                            contentColor = Color.Black
+                        )
                     ) {
-                        Text("取消")
+                        Text("取消", color = Color.Black)  // ✅ 加 color
                     }
                     Button(
                         onClick = loginAction,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF673AB7)
+                            containerColor = Color(0xFF673AB7),
+                            contentColor = Color.White  // ✅ 加這行
                         ),
                         enabled = !isLoading
                     ) {
@@ -487,7 +504,7 @@ fun LoginDialog(
                                 modifier = Modifier.size(18.dp)
                             )
                         } else {
-                            Text("登入", fontWeight = FontWeight.Bold)
+                            Text("登入", fontWeight = FontWeight.Bold, color = Color.White)  // ✅ 加 color
                         }
                     }
                 }
