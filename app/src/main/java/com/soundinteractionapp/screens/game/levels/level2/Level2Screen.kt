@@ -36,6 +36,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.soundinteractionapp.R
@@ -197,7 +200,7 @@ fun Level2FollowBeatScreen(
         }
     }
 
-    // --- 3. 核心玩法：絕對時間同步 (解決延遲) ---
+// --- 3. 核心玩法：絕對時間同步 (解決延遲) ---
     LaunchedEffect(gameState) {
         if (gameState == Level2GameState.PLAYING && mediaPlayer != null) {
             val player = mediaPlayer!!
@@ -245,6 +248,43 @@ fun Level2FollowBeatScreen(
                 }
                 delay(12)
             }
+        }
+    }
+
+    // ✅ 新增：監聽 App 生命週期，處理預覽音樂
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, gameState) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    if (gameState == Level2GameState.SELECTION) {
+                        previewPlayer?.pause()
+                        Log.d("Level2", "Preview paused")
+                    }
+                }
+
+                Lifecycle.Event.ON_RESUME -> {
+                    if (gameState == Level2GameState.SELECTION && previewPlayer != null) {
+                        previewPlayer?.start()
+                        Log.d("Level2", "Preview resumed")
+                    }
+                }
+
+                Lifecycle.Event.ON_DESTROY -> {
+                    stopPreview()
+                    optionsSoundPlayer?.release()
+                    optionsSoundPlayer = null
+                }
+
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            stopPreview()
+            optionsSoundPlayer?.release()
+            optionsSoundPlayer = null
         }
     }
 

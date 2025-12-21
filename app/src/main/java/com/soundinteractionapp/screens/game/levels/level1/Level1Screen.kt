@@ -1,6 +1,7 @@
 package com.soundinteractionapp.screens.game.levels.level1
 
 import android.media.MediaPlayer
+import android.util.Log
 import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -36,6 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.runtime.withFrameMillis
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.firebase.auth.FirebaseAuth
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
@@ -256,7 +260,7 @@ fun Level1FollowBeatScreen(
         }
     }
 
-    // --- 5. 核心打擊監聽 ---
+// --- 5. 核心打擊監聽 ---
     LaunchedEffect(Unit) {
         GameInputManager.keyEvents.collectLatest {
             if (gameState == GameState.PLAYING) {
@@ -345,6 +349,43 @@ fun Level1FollowBeatScreen(
                     }
                 }
             }
+        }
+    }
+
+    // ✅ 新增：監聽 App 生命週期，處理預覽音樂
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, gameState) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    if (gameState == GameState.SELECTION) {
+                        previewPlayer?.pause()
+                        Log.d("Level1", "Preview paused")
+                    }
+                }
+
+                Lifecycle.Event.ON_RESUME -> {
+                    if (gameState == GameState.SELECTION && previewPlayer != null) {
+                        previewPlayer?.start()
+                        Log.d("Level1", "Preview resumed")
+                    }
+                }
+
+                Lifecycle.Event.ON_DESTROY -> {
+                    stopPreview()
+                    optionsSoundPlayer?.release()
+                    optionsSoundPlayer = null
+                }
+
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            stopPreview()
+            optionsSoundPlayer?.release()
+            optionsSoundPlayer = null
         }
     }
 
