@@ -82,12 +82,19 @@ fun ResultScreen(
                     // ✅ 篩選出本次遊戲相關的成就
                     val gameRelatedAchievements = mutableListOf<String>()
 
+                    // 成就 4: Flawless Finish／無瑕結束
                     if (4 in newlyUnlocked && missCount == 0) {
                         gameRelatedAchievements.add("Flawless Finish／無瑕結束")
                     }
 
+                    // 成就 5: Perfect Performance／完美演出
                     if (5 in newlyUnlocked && currentScores.level4Total >= 30000) {
                         gameRelatedAchievements.add("Perfect Performance／完美演出")
+                    }
+
+                    // 成就 6: Mode Three Completionist／模式三完成者
+                    if (6 in newlyUnlocked) {
+                        gameRelatedAchievements.add("Mode Three Completionist／模式三完成者")
                     }
 
                     if (gameRelatedAchievements.isNotEmpty()) {

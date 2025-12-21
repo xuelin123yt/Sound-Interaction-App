@@ -344,8 +344,20 @@ fun Level3PitchScreen(
                                 val achievementManager = AchievementManager()
                                 val currentScores = rankingViewModel.scores.value
                                 val newlyUnlocked = achievementManager.checkAndUnlockAchievements(scoreEntry = currentScores, hasFeedback = false, hasAvatar = false)
+                                val gameRelatedAchievements = mutableListOf<String>()
+
+                                // 成就 3: Voice Flight Ace／聲控飛行高手
                                 if (3 in newlyUnlocked && currentScores.level3Score >= 3000) {
-                                    newlyUnlockedAchievements = listOf("Voice Flight Ace／聲控飛行高手")
+                                    gameRelatedAchievements.add("Voice Flight Ace／聲控飛行高手")
+                                }
+
+                                // 成就 6: Mode Three Completionist／模式三完成者
+                                if (6 in newlyUnlocked) {
+                                    gameRelatedAchievements.add("Mode Three Completionist／模式三完成者")
+                                }
+
+                                if (gameRelatedAchievements.isNotEmpty()) {
+                                    newlyUnlockedAchievements = gameRelatedAchievements
                                 }
                             } catch (e: Exception) { Log.e("Level3Result", "❌ 檢查成就失敗", e) }
                         }

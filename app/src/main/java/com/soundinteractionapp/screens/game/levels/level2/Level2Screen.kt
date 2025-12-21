@@ -642,8 +642,14 @@ fun Level2ResultContent(
 
                 val gameRelatedAchievements = mutableListOf<String>()
 
+                // 成就 2: Combo Master／連擊大師
                 if (2 in newlyUnlocked && currentScores.level2MaxCombo >= 100) {
                     gameRelatedAchievements.add("Combo Master／連擊大師")
+                }
+
+                // 成就 6: Mode Three Completionist／模式三完成者
+                if (6 in newlyUnlocked) {
+                    gameRelatedAchievements.add("Mode Three Completionist／模式三完成者")
                 }
 
                 if (gameRelatedAchievements.isNotEmpty()) {

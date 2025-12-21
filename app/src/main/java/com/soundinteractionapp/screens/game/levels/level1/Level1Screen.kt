@@ -605,21 +605,53 @@ fun GameResultContent(
 ) {
     val rank = GameScoreUtils.calculateRank(score, maxScore)
     val rankColor = GameScoreUtils.getRankColor(rank)
+
+    // ✅ 用於追蹤「首次解鎖」的成就
     var newlyUnlockedAchievements by remember { mutableStateOf<List<String>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
+    // ✅ 遊戲結束時檢查成就
     LaunchedEffect(Unit) {
         coroutineScope.launch {
+            // 延遲確保分數已同步
+            kotlinx.coroutines.delay(500)
+
             try {
                 val achievementManager = AchievementManager()
                 val currentScores = rankingViewModel.scores.value
+
+                Log.d("Level1Result", "=== 成就檢測 ===")
+                Log.d("Level1Result", "當前評級: $rank")
+                Log.d("Level1Result", "當前分數: $currentScores")
+
+                // ✅ 檢查並解鎖成就
                 val newlyUnlocked = achievementManager.checkAndUnlockAchievements(
                     scoreEntry = currentScores,
                     hasFeedback = false,
                     hasAvatar = false
                 )
+
+                Log.d("Level1Result", "新解鎖的成就 ID: $newlyUnlocked")
+
+                // ✅ 篩選出本次遊戲相關的成就
+                val gameRelatedAchievements = mutableListOf<String>()
+
+                // 成就 1: Score Champion／高分冠軍（任意難度 SSS）
+                if (1 in newlyUnlocked && rank == "SSS") {
+                    gameRelatedAchievements.add("Score Champion／高分冠軍")
+                }
+
+                // 成就 6: Mode Three Completionist／模式三完成者
+                if (6 in newlyUnlocked) {
+                    gameRelatedAchievements.add("Mode Three Completionist／模式三完成者")
+                }
+
+                if (gameRelatedAchievements.isNotEmpty()) {
+                    newlyUnlockedAchievements = gameRelatedAchievements
+                    Log.d("Level1Result", "🎉 新解鎖成就: $gameRelatedAchievements")
+                }
             } catch (e: Exception) {
-                Log.e("Level1Result", "檢查成就失敗", e)
+                Log.e("Level1Result", "❌ 檢查成就失敗", e)
             }
         }
     }
@@ -657,22 +689,41 @@ fun GameResultContent(
                     StatBubble("失誤", missCount, Color(0xFFFF5252))
                 }
 
+                // ✅ 顯示新解鎖的成就
                 if (newlyUnlockedAchievements.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
+
                     newlyUnlockedAchievements.forEach { achievementName ->
                         Card(
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f)),
                             border = BorderStroke(1.dp, Color(0xFF4CAF50)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text("🏆", fontSize = 24.sp)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text("成就解鎖！", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
-                                    Text(achievementName, fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+                                    Text(
+                                        "成就解鎖！",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                    Text(
+                                        achievementName,
+                                        fontSize = 14.sp,
+                                        color = Color.White.copy(alpha = 0.8f)
+                                    )
                                 }
                             }
+                        }
+
+                        // ✅ 如果不是最後一個成就，添加間距
+                        if (achievementName != newlyUnlockedAchievements.last()) {
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
