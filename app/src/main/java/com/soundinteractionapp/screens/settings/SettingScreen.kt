@@ -23,12 +23,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
+import com.soundinteractionapp.data.SoundSettingsViewModel
 import com.soundinteractionapp.screens.settings.components.CategoryItem
 import com.soundinteractionapp.screens.settings.sections.*
 
 @Composable
 fun SettingScreen(
     soundManager: SoundManager,
+    soundSettingsViewModel: SoundSettingsViewModel,
     onNavigateBack: () -> Unit,
     isLoggedIn: Boolean = false
 ) {
@@ -239,7 +241,7 @@ fun SettingScreen(
                             DisplaySection()
                         }
                         "遊戲" -> {
-                            GameSection()
+                            GameSection(soundSettingsViewModel, soundManager)  // ✅ 傳入 soundManager
                         }
                         "其他" -> {
                             OtherSection(

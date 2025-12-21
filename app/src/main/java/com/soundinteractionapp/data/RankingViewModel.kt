@@ -6,15 +6,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class RankingViewModel : ViewModel() {
-    // 初始化 Repository
     private val repository = RankingRepository()
 
-    // 將 Repository 的分數狀態暴露給 UI 觀察
     val scores: StateFlow<ScoreEntry> = repository.scores
 
     /**
-     * ✅ [關鍵修正] 新增這個函式！
-     * Level 2 的 UI 就是在呼叫這個函式，加上去後錯誤就會消失。
+     * 更新最高分
      */
     fun updateHighScore(scoreId: Int, newScore: Int) {
         viewModelScope.launch {
@@ -23,7 +20,25 @@ class RankingViewModel : ViewModel() {
     }
 
     /**
-     * [保留] Level 1 舊有的呼叫方式 (相容性)
+     * ✅ 新增：更新關卡二的最高 Combo
+     */
+    fun updateLevel2MaxCombo(newCombo: Int) {
+        viewModelScope.launch {
+            repository.updateLevel2MaxCombo(newCombo)
+        }
+    }
+
+    /**
+     * ✅ 新增：標記關卡四已達成「無 Miss」
+     */
+    fun markLevel4NoMiss() {
+        viewModelScope.launch {
+            repository.markLevel4NoMiss()
+        }
+    }
+
+    /**
+     * [保留] Level 1/3 舊有的呼叫方式 (相容性)
      */
     fun onGameFinished(levelId: Int, finalScore: Int) {
         updateHighScore(levelId, finalScore)

@@ -26,7 +26,7 @@ import com.soundinteractionapp.data.ProfileViewModel
 import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.screens.profile.components.*
 import com.soundinteractionapp.screens.profile.dialogs.*
-import com.soundinteractionapp.screens.profile.models.AchievementProvider
+import com.soundinteractionapp.screens.profile.models.AchievementViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,11 +37,10 @@ fun ProfileScreen(
     soundManager: SoundManager,
     authViewModel: AuthViewModel = viewModel(),
     profileViewModel: ProfileViewModel = viewModel(),
-    rankingViewModel: RankingViewModel = viewModel()
+    rankingViewModel: RankingViewModel = viewModel(),
+    achievementViewModel: AchievementViewModel = viewModel()
 ) {
     val context = LocalContext.current
-
-    // ✅ 防抖狀態
     var isNavigating by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -51,6 +50,24 @@ fun ProfileScreen(
     val userProfile by profileViewModel.userProfile.collectAsState()
     val isAnonymous by profileViewModel.isAnonymous.collectAsState()
     val isLoading by profileViewModel.isLoading.collectAsState()
+
+    // ✅ 修復：使用 ViewModel 的動態成就資料
+    val achievements by achievementViewModel.achievements.collectAsState()
+    val isLoadingAchievements by achievementViewModel.isLoading.collectAsState()
+
+    // ✅ 載入成就（當頭像或分數變化時）
+    LaunchedEffect(userProfile.photoUrl) {
+        achievementViewModel.loadAchievements(rankingViewModel, userProfile.photoUrl.isNotEmpty())
+    }
+
+    // ✅ 監聽分數變化，自動刷新成就
+    val scores by rankingViewModel.scores.collectAsState()
+    LaunchedEffect(scores) {
+        achievementViewModel.refreshAchievements(
+            rankingViewModel = rankingViewModel,
+            hasAvatar = userProfile.photoUrl.isNotEmpty()
+        )
+    }
 
     var showEditDialog by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
@@ -68,8 +85,6 @@ fun ProfileScreen(
             R.drawable.avatar_21, R.drawable.avatar_22, R.drawable.avatar_23, R.drawable.avatar_24
         )
     }
-
-    val achievements = remember { AchievementProvider.getAllAchievements() }
 
     Scaffold(
         topBar = {
@@ -141,10 +156,20 @@ fun ProfileScreen(
                 Spacer(Modifier.height(24.dp))
             }
 
-            AchievementDisplay(
-                achievements = achievements,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // ✅ 修復：使用動態成就資料，並顯示載入狀態
+            if (isLoadingAchievements) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF673AB7))
+                }
+            } else {
+                AchievementDisplay(
+                    achievements = achievements,  // ✅ 使用 ViewModel 的動態資料
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             Spacer(Modifier.height(32.dp))
 
@@ -167,6 +192,8 @@ fun ProfileScreen(
         defaultAvatars = defaultAvatars,
         userProfile = userProfile,
         profileViewModel = profileViewModel,
+        achievementViewModel = achievementViewModel,  // ✅ 傳遞 ViewModel
+        rankingViewModel = rankingViewModel,          // ✅ 傳遞 ViewModel
         onDismissAvatarPicker = { showAvatarPicker = false },
         onDismissEditDialog = { showEditDialog = false },
         onDismissAboutDialog = { showAboutDialog = false },
@@ -204,7 +231,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
                 color = Color(0xFFEEEEEE)
             )
 
-            // Level 1
             Text(
                 "🎵 關卡 1: 料理鼠王",
                 fontSize = 14.sp,
@@ -238,7 +264,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // Level 2
             Text(
                 "🎹 關卡 2: 鋼琴演奏",
                 fontSize = 14.sp,
@@ -272,7 +297,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // Level 3
             Text(
                 "🎤 關卡 3: 聲控飛行",
                 fontSize = 14.sp,
@@ -284,7 +308,6 @@ fun ScoreBoardSection(rankingViewModel: RankingViewModel) {
 
             Spacer(Modifier.height(12.dp))
 
-            // ========== ✅ Level 4: 補上第五首 ==========
             Text(
                 "🎵 關卡 4: 音遊模式",
                 fontSize = 14.sp,
@@ -401,6 +424,8 @@ private fun ProfileDialogs(
     defaultAvatars: List<Int>,
     userProfile: com.soundinteractionapp.data.UserProfile,
     profileViewModel: ProfileViewModel,
+    achievementViewModel: AchievementViewModel,  // ✅ 新增
+    rankingViewModel: RankingViewModel,          // ✅ 新增
     onDismissAvatarPicker: () -> Unit,
     onDismissEditDialog: () -> Unit,
     onDismissAboutDialog: () -> Unit,
@@ -416,6 +441,13 @@ private fun ProfileDialogs(
             onDismiss = onDismissAvatarPicker,
             onSelect = { selectedResId ->
                 profileViewModel.updateAvatar(selectedResId.toString())
+
+                // ✅ 更新頭像後刷新成就
+                achievementViewModel.refreshAchievements(
+                    rankingViewModel = rankingViewModel,
+                    hasAvatar = true
+                )
+
                 onDismissAvatarPicker()
                 Toast.makeText(context, "頭像已更新", Toast.LENGTH_SHORT).show()
             }

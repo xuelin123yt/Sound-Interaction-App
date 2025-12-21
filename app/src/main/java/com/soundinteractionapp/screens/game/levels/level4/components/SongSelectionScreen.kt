@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.soundinteractionapp.R
+import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.ScoreEntry
 import com.soundinteractionapp.screens.game.levels.level4.Level4UnlockSystem
 import com.soundinteractionapp.screens.game.levels.level4.beatmaps.Beatmap
@@ -41,6 +42,7 @@ fun SongSelectionScreen(
     beatmaps: List<Beatmap>,
     isGuest: Boolean,
     scoreEntry: ScoreEntry,
+    soundManager: SoundManager,  // ✅ 新增這行
     onSongSelected: (Int, Boolean) -> Unit,  // ✅ 修改：新增 isAutoMode 參數
     onBack: () -> Unit
 ) {
@@ -49,7 +51,7 @@ fun SongSelectionScreen(
     val coroutineScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val previewAudioManager = remember { PreviewAudioManager(context) }
+    val previewAudioManager = remember { PreviewAudioManager(context, soundManager) }
 
     // ✅ 淡入淡出動畫狀態
     var isTransitioning by remember { mutableStateOf(false) }

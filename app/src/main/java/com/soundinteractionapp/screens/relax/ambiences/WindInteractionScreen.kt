@@ -32,13 +32,10 @@ fun WindInteractionScreen(
     soundManager: SoundManager
 ) {
     val context = LocalContext.current
-
-    // 1. 狀態管理
-    var isPressing by remember { mutableStateOf(false) } // 追蹤長按狀態
-    var bgIndex by remember { mutableIntStateOf(0) }    // 追蹤背景索引
+    var isPressing by remember { mutableStateOf(false) }
+    var bgIndex by remember { mutableIntStateOf(0) }
     var isNavigating by remember { mutableStateOf(false) }
 
-    // 2. 微風背景清單 (請確認 R.raw 有這些檔案)
     val videoList = remember {
         listOf(
             R.raw.windbackground1,
@@ -47,19 +44,30 @@ fun WindInteractionScreen(
         )
     }
 
-    // 3. 風聲播放器 (長按時播放)
+    // ✅ 取得音量設定
+    val windVolume = remember {
+        derivedStateOf {
+            val detailVolume = soundManager.getRelaxVolume("wind")
+            val masterVolume = soundManager.masterVolume
+            val sfxVolume = soundManager.sfxVolume
+            val isMuted = soundManager.isMasterMuted || soundManager.isSfxMuted
+
+            if (isMuted) 0f else (masterVolume * sfxVolume * detailVolume)
+        }
+    }
+
     val audioPlayer = remember {
         try {
             MediaPlayer.create(context, R.raw.wind_sound).apply {
                 isLooping = true
-                setVolume(0.7f, 0.7f)
+                val vol = windVolume.value
+                setVolume(vol, vol)
             }
         } catch (e: Exception) {
             null
         }
     }
 
-    // 4. 影片播放器 (背景動態影片)
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
@@ -67,7 +75,14 @@ fun WindInteractionScreen(
         }
     }
 
-    // 5. 監控：切換影片
+    // ✅ 監聽音量變化並更新
+    LaunchedEffect(windVolume.value) {
+        audioPlayer?.let {
+            val vol = windVolume.value
+            it.setVolume(vol, vol)
+        }
+    }
+
     LaunchedEffect(bgIndex) {
         val videoUri = Uri.parse("android.resource://${context.packageName}/${videoList[bgIndex]}")
         exoPlayer.setMediaItem(MediaItem.fromUri(videoUri))
@@ -75,7 +90,6 @@ fun WindInteractionScreen(
         exoPlayer.play()
     }
 
-    // 6. 監控：長按音效開關
     LaunchedEffect(isPressing) {
         if (isPressing) {
             audioPlayer?.start()
@@ -86,7 +100,6 @@ fun WindInteractionScreen(
         }
     }
 
-    // 7. 資源釋放
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
@@ -94,11 +107,9 @@ fun WindInteractionScreen(
         }
     }
 
-    // 8. 介面佈局
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // 偵測全螢幕長按
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -112,7 +123,6 @@ fun WindInteractionScreen(
                 )
             }
     ) {
-        // 底層影片
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -125,33 +135,31 @@ fun WindInteractionScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // UI 頂層覆蓋
         Box(modifier = Modifier.fillMaxSize()) {
-
-            // --- 上方按鈕列 ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp)
                     .align(Alignment.TopCenter),
-                horizontalArrangement = Arrangement.SpaceBetween // 讓兩個按鈕分開在左右兩邊
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // 左上：返回按鈕
                 Button(
                     onClick = {
                         if (!isNavigating) {
                             isNavigating = true
+                            soundManager.playSFX("cancel")
                             onNavigateBack()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
+                    enabled = !isNavigating
                 ) {
                     Text("← 返回", color = Color.White)
                 }
 
-                // 🔥 右上：切換場景按鈕
                 Button(
                     onClick = {
+                        soundManager.playSFX("options2")
                         bgIndex = (bgIndex + 1) % videoList.size
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -162,7 +170,6 @@ fun WindInteractionScreen(
                 }
             }
 
-            // 中間提示文字
             if (!isPressing) {
                 Text(
                     text = "長按螢幕感受微風...",

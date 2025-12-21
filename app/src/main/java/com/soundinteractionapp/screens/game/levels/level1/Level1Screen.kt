@@ -41,6 +41,7 @@ import com.soundinteractionapp.utils.GameInputManager
 import com.soundinteractionapp.GameProgressManager
 import com.soundinteractionapp.utils.GameScoreUtils
 import com.soundinteractionapp.screens.game.levels.level1.Level1Charts
+import com.soundinteractionapp.utils.VolumeKeys
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -142,7 +143,15 @@ fun Level1FollowBeatScreen(
             while (countdownValue > 0) { delay(1000); countdownValue-- }
             feedbackText = "GO!"
             gameState = GameState.PLAYING
-            soundManager.playMusic(selectedDifficulty.musicResId)
+
+            // ✅ 正確寫法：根據難度傳入對應的 VolumeKey
+            val volumeKey = when(selectedDifficulty) {
+                Difficulty.EASY -> VolumeKeys.LEVEL1_EASY
+                Difficulty.NORMAL -> VolumeKeys.LEVEL1_MEDIUM
+                Difficulty.HARD -> VolumeKeys.LEVEL1_HARD
+            }
+            soundManager.playGameMusic(selectedDifficulty.musicResId, volumeKey)  // ✅ 只受遊戲設定音量影響
+
             startTime = System.currentTimeMillis()
         }
 
@@ -188,11 +197,24 @@ fun Level1FollowBeatScreen(
     LaunchedEffect(Unit) {
         GameInputManager.keyEvents.collectLatest {
             if (gameState == GameState.PLAYING) {
-                try { soundManager.playSound(R.raw.hit_music) } catch (e: Exception) { e.printStackTrace() }
-
+                // ========== 第 1 步：立即觸發角色動畫 ==========
                 characterAnimJob?.cancel()
-                characterAnimJob = launch { isCharacterStriking = true; delay(100); isCharacterStriking = false }
+                characterAnimJob = launch {
+                    isCharacterStriking = true
+                    delay(100)
+                    isCharacterStriking = false
+                }
 
+                // ========== 第 2 步：非阻塞播放音效 ==========
+                launch {
+                    try {
+                        soundManager.playGameSFX("hit_music", VolumeKeys.LEVEL1_HIT)  // ✅ 只受遊戲設定音量影響
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                // ========== 第 3 步：判定邏輯 ==========
                 val baseJudgeRadius = 120f
                 val targetNote = currentNotes.firstOrNull { note ->
                     if (note.isHit) return@firstOrNull false
@@ -206,16 +228,23 @@ fun Level1FollowBeatScreen(
                     targetNote.isHit = true
 
                     val rushThreshold = when (selectedDifficulty) {
-                        Difficulty.EASY -> 20; Difficulty.NORMAL -> 40; Difficulty.HARD -> 60
+                        Difficulty.EASY -> 20
+                        Difficulty.NORMAL -> 40
+                        Difficulty.HARD -> 60
                     }
                     val isRushTime = combo >= rushThreshold
 
                     if (offsetPercentage <= 0.65f) {
+                        // ========== 立即觸發打擊特效動畫 ==========
                         effectJob?.cancel()
                         effectJob = launch {
                             currentEffectFrame = 0
-                            while (currentEffectFrame < 5) { delay(30); currentEffectFrame++ }
-                            delay(30); currentEffectFrame = -1
+                            while (currentEffectFrame < 5) {
+                                delay(30)
+                                currentEffectFrame++
+                            }
+                            delay(30)
+                            currentEffectFrame = -1
                         }
 
                         if (offsetPercentage <= 0.35f) {
@@ -243,13 +272,19 @@ fun Level1FollowBeatScreen(
                         feedbackText = "錯過了"
                         effectColor = Color.Gray
                         trackBorderColor = Color.Red
-                        launch { penaltyFlashAlpha.snapTo(0.3f); penaltyFlashAlpha.animateTo(0f, tween(100)) }
+                        launch {
+                            penaltyFlashAlpha.snapTo(0.3f)
+                            penaltyFlashAlpha.animateTo(0f, tween(100))
+                        }
                     }
                 } else {
                     feedbackText = "揮空了呦"
                     effectColor = Color.Gray
                     score = (score - 1).coerceAtLeast(0)
-                    launch { penaltyFlashAlpha.snapTo(0.3f); penaltyFlashAlpha.animateTo(0f, tween(200)) }
+                    launch {
+                        penaltyFlashAlpha.snapTo(0.3f)
+                        penaltyFlashAlpha.animateTo(0f, tween(200))
+                    }
                 }
             }
         }

@@ -15,7 +15,7 @@ const float BIRD_X = 300.0f;          // 鳥的固定 X 軸位置
 const float BIRD_RADIUS = 70.0f;      // 鳥的碰撞半徑
 
 // --- 障礙物設定 ---
-const float PIPE_SPEED = 18.0f;       // 管子移動速度
+const float PIPE_SPEED = 10.0f;       // 管子移動速度
 const float COLLISION_PIPE_WIDTH = 300.0f; // 管子寬度
 const float GAME_WIDTH = 4000.0f;     // 遊戲世界生成寬度
 
@@ -60,9 +60,9 @@ Java_com_soundinteractionapp_GameEngine_initGame(JNIEnv* env, jobject) {
 
     obstacles.clear();
 
-    // 生成第一根管子
+    // 生成第一根管子（調整後的縫隙高度）
     float firstGapY = 700.0f + (rand() % 600);
-    float firstGapH = (BIRD_RADIUS * 2 * 3.0f);
+    float firstGapH = (BIRD_RADIUS * 2 * 4.5f);  // ✅ 改成 4.5 倍（原本 3.0）
     float firstDist = 1000.0f + (rand() % 800);
 
     obstacles.push_back({GAME_WIDTH, firstGapY, firstGapH, false, firstDist, false});
@@ -207,9 +207,12 @@ Java_com_soundinteractionapp_GameEngine_updateGame(JNIEnv* env, jobject) {
             float range = 600.0f;
             float randomGapY = minGapY + (rand() % (int)range);
             float birdDiameter = BIRD_RADIUS * 2;
-            float multipliers[] = {2.5f, 3.0f, 4.0f};
+
+            // ✅ 調整縫隙高度倍數（原本 2.5, 3.0, 4.0 → 改成 4.5, 5.0, 5.5）
+            float multipliers[] = {4.5f, 5.0f, 5.5f};
             int randomIndex = rand() % 3;
             float randomGapH = birdDiameter * multipliers[randomIndex];
+
             float nextDist = 1000.0f + (rand() % 800);
 
             obstacles.push_back({obstacles.back().x + currentSpawnDist, randomGapY, randomGapH, false, nextDist, false});

@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable // 改用這個
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.screens.game.levels.VideoBackground
+import com.soundinteractionapp.utils.VolumeKeys
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -31,6 +32,7 @@ import kotlin.random.Random
 data class DogAsset(
     val frames: List<Int>,
     val soundKey: String,
+    val volumeKey: String,  // ✅ 新增音量鍵
     val name: String
 )
 
@@ -39,30 +41,29 @@ data class DogAsset(
 fun DogInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
     var isNavigating by remember { mutableStateOf(false) }
 
-    // 設定視覺深度：遠小近大
     val farDogSize = 130.dp
     val nearDogSize = 180.dp
-
-    // 設定位置
     val farDogTopOffset = 180.dp
     val nearDogBottomOffset = 10.dp
 
-    // --- 【重要】請確認你的 SoundManager 有載入這些 Key ---
     val allDogs = remember {
         listOf(
             DogAsset(
                 frames = listOf(R.drawable.dog1_1, R.drawable.dog1_2, R.drawable.dog1_3, R.drawable.dog1_4),
-                soundKey = "dog_bark1", // 這裡的字串必須跟 SoundManager 裡的完全一樣
+                soundKey = "dog_bark1",
+                volumeKey = VolumeKeys.FREEPLAY_DOG1,  // ✅ 黃金獵犬
                 name = "Golden Retriever"
             ),
             DogAsset(
                 frames = listOf(R.drawable.dog2_1, R.drawable.dog2_2, R.drawable.dog2_3),
                 soundKey = "dog_bark2",
+                volumeKey = VolumeKeys.FREEPLAY_DOG2,  // ✅ 柴犬
                 name = "Shiba"
             ),
             DogAsset(
                 frames = listOf(R.drawable.dog3_1, R.drawable.dog3_2, R.drawable.dog3_3),
                 soundKey = "dog_bark3",
+                volumeKey = VolumeKeys.FREEPLAY_DOG3,  // ✅ 哈士奇
                 name = "Husky"
             )
         )
@@ -122,6 +123,7 @@ fun DogInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager)
                 onClick = {
                     if (isNavigating) return@Button
                     isNavigating = true
+                    soundManager.playSFX("cancel")
                     onNavigateBack()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
@@ -184,28 +186,25 @@ fun RotatingDog(
     // 點擊互動狀態
     var isTapped by remember { mutableStateOf(false) }
     val tapScale = animateFloatAsState(if (isTapped) 1.25f else 1.0f, tween(100), label = "tap")
-    // 用於消除預設的點擊波紋，因為我們要自己做縮放效果
     val interactionSource = remember { MutableInteractionSource() }
 
-    // 圖片翻轉：放在 Image 層，不影響 Box 觸控
     val directionScaleX = if (startFromRight) -1f else 1f
 
     Box(
         modifier = Modifier
-            .offset { IntOffset(xOffsetAnim.value.toInt(), yOffsetPx) } // 1. 設定位置
-            .size(dogDisplaySize) // 2. 設定大小
-            .scale(tapScale.value) // 3. 點擊縮放動畫
-            .clickable( // 4. 設定點擊 (改用 clickable 更穩定)
+            .offset { IntOffset(xOffsetAnim.value.toInt(), yOffsetPx) }
+            .size(dogDisplaySize)
+            .scale(tapScale.value)
+            .clickable(
                 interactionSource = interactionSource,
-                indication = null // 關閉預設波紋
+                indication = null
             ) {
-                // --- 除錯區 ---
-                Log.d("DogDebug", "Clicked on dog: ${dogData.name}, Key: ${dogData.soundKey}")
+                Log.d("DogDebug", "Clicked on dog: ${dogData.name}, Key: ${dogData.soundKey}, Volume: ${dogData.volumeKey}")
                 isTapped = true
 
                 try {
-                    // 播放聲音
-                    soundManager.playDirectSound(dogData.soundKey)
+                    // ✅ 使用各自的音量鍵
+                    soundManager.playSFX(dogData.soundKey, dogData.volumeKey)
                 } catch (e: Exception) {
                     Log.e("DogDebug", "Error playing sound: ${e.message}")
                 }
@@ -220,7 +219,6 @@ fun RotatingDog(
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .fillMaxSize()
-                // 只在視覺層翻轉，不影響觸控判定
                 .scale(scaleX = directionScaleX, scaleY = 1f)
         )
     }

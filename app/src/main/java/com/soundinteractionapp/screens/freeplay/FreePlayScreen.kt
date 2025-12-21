@@ -86,7 +86,7 @@ fun FreePlayScreenContent(
                 primaryColor = Color(0xFFFFCC80),
                 secondaryColor = Color(0xFFFFE0B2),
                 description = "可愛的喵喵聲",
-                soundResId = R.raw.cat_meow,
+                soundResId = R.raw.meow1,
                 onNavigate = onNavigateToCatInteraction
             ),
             TaikoMenuItem(

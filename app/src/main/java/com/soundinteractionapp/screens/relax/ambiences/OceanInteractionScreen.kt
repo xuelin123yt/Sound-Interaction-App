@@ -25,9 +25,6 @@ import androidx.media3.ui.PlayerView
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 
-
-
-
 @OptIn(UnstableApi::class)
 @Composable
 fun OceanInteractionScreen(
@@ -43,13 +40,24 @@ fun OceanInteractionScreen(
         listOf(R.raw.oceanbackground1, R.raw.oceanbackground2, R.raw.oceanbackground3)
     }
 
-    // 💡 加強版初始化：加入 null 檢查與錯誤捕捉
+    // ✅ 取得音量設定
+    val oceanVolume = remember {
+        derivedStateOf {
+            val detailVolume = soundManager.getRelaxVolume("ocean")
+            val masterVolume = soundManager.masterVolume
+            val sfxVolume = soundManager.sfxVolume
+            val isMuted = soundManager.isMasterMuted || soundManager.isSfxMuted
+
+            if (isMuted) 0f else (masterVolume * sfxVolume * detailVolume)
+        }
+    }
+
     val audioPlayer = remember {
         try {
-            // 這裡務必確認檔案名稱是 wave_sound
             MediaPlayer.create(context, R.raw.wave_sound)?.apply {
                 isLooping = true
-                setVolume(0.8f, 0.8f)
+                val vol = oceanVolume.value
+                setVolume(vol, vol)
             } ?: run {
                 println("DEBUG: MediaPlayer.create 回傳 null，請檢查 wave_sound 檔案")
                 null
@@ -67,6 +75,14 @@ fun OceanInteractionScreen(
         }
     }
 
+    // ✅ 監聽音量變化並更新
+    LaunchedEffect(oceanVolume.value) {
+        audioPlayer?.let {
+            val vol = oceanVolume.value
+            it.setVolume(vol, vol)
+        }
+    }
+
     LaunchedEffect(bgIndex) {
         val videoUri = Uri.parse("android.resource://${context.packageName}/${videoList[bgIndex]}")
         exoPlayer.setMediaItem(MediaItem.fromUri(videoUri))
@@ -74,7 +90,6 @@ fun OceanInteractionScreen(
         exoPlayer.play()
     }
 
-    // 💡 只有在播放器存在且正確時才進行操作
     LaunchedEffect(isPressing) {
         audioPlayer?.let { player ->
             try {
@@ -86,7 +101,6 @@ fun OceanInteractionScreen(
                     }
                 }
             } catch (e: IllegalStateException) {
-                // 捕捉狀態異常，防止噴出 Error -38
                 println("DEBUG: 播放器狀態錯誤: ${e.message}")
             }
         }
@@ -133,12 +147,22 @@ fun OceanInteractionScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Button(
-                    onClick = { if (!isNavigating) { isNavigating = true; onNavigateBack() } },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f))
+                    onClick = {
+                        if (!isNavigating) {
+                            isNavigating = true
+                            soundManager.playSFX("cancel")
+                            onNavigateBack()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
+                    enabled = !isNavigating
                 ) { Text("← 返回", color = Color.White) }
 
                 Button(
-                    onClick = { bgIndex = (bgIndex + 1) % videoList.size },
+                    onClick = {
+                        soundManager.playSFX("options2")
+                        bgIndex = (bgIndex + 1) % videoList.size
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
                 ) { Text("切換場景 (${bgIndex + 1}/3)") }
             }

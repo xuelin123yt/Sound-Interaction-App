@@ -256,6 +256,17 @@ fun GameScreen(
             // ✅ 恢復遊戲前重新計算 audioOffset
             audioOffset = AudioOffsetManager.getCurrentOffset()
 
+            // ✅ 恢復遊戲時重新設定音量
+            val songVolume = soundManager.getLevel4SongVolume(beatmap.id)
+            val finalVolume = if (soundManager.isMasterMuted) {
+                0f
+            } else {
+                soundManager.masterVolume * songVolume
+            }
+            mediaPlayer?.setVolume(finalVolume, finalVolume)
+
+            android.util.Log.d("GameScreen", "Resume - beatmapId=${beatmap.id}, songVolume=$songVolume, finalVolume=$finalVolume")
+
             mediaPlayer?.seekTo(pausedPosition)
             mediaPlayer?.start()
         }
@@ -265,11 +276,24 @@ fun GameScreen(
         try {
             mediaPlayer?.release()
             mediaPlayer = MediaPlayer.create(context, beatmap.audioResId)
+
+            // ✅ 設定音量（試聽和遊戲共用同一個音量）
+            val songVolume = soundManager.getLevel4SongVolume(beatmap.id)
+            val finalVolume = if (soundManager.isMasterMuted) {
+                0f
+            } else {
+                soundManager.masterVolume * songVolume
+            }
+            mediaPlayer?.setVolume(finalVolume, finalVolume)
+
             mediaPlayer?.isLooping = false
             musicDuration = mediaPlayer?.duration?.toLong() ?: 0L
             mediaPlayer?.setOnCompletionListener {
                 gameState = GameState.FINISHED
             }
+
+            android.util.Log.d("GameScreen", "Music loaded - beatmapId=${beatmap.id}, songVolume=$songVolume, finalVolume=$finalVolume")
+
         } catch (e: Exception) {
             e.printStackTrace()
         }

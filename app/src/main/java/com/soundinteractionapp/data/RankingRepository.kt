@@ -84,6 +84,7 @@ class RankingRepository {
                             level2Easy = maxOf(localEntry.level2Easy, cloudEntry.level2Easy),
                             level2Normal = maxOf(localEntry.level2Normal, cloudEntry.level2Normal),
                             level2Hard = maxOf(localEntry.level2Hard, cloudEntry.level2Hard),
+                            level2MaxCombo = maxOf(localEntry.level2MaxCombo, cloudEntry.level2MaxCombo),  // ✅ 新增
 
                             level3Score = maxOf(localEntry.level3Score, cloudEntry.level3Score),
 
@@ -91,18 +92,13 @@ class RankingRepository {
                             level4Osu02 = maxOf(localEntry.level4Osu02, cloudEntry.level4Osu02),
                             level4Osu03 = maxOf(localEntry.level4Osu03, cloudEntry.level4Osu03),
                             level4Osu04 = maxOf(localEntry.level4Osu04, cloudEntry.level4Osu04),
-                            level4Osu05 = maxOf(localEntry.level4Osu05, cloudEntry.level4Osu05)
+                            level4Osu05 = maxOf(localEntry.level4Osu05, cloudEntry.level4Osu05),
+                            level4HasNoMiss = localEntry.level4HasNoMiss || cloudEntry.level4HasNoMiss  // ✅ 新增（OR 邏輯）
                         )
 
                         _scores.value = mergedEntry
 
                         Log.d("RankingRepo", "📥 雲端數據已合併（保留最高分）")
-                        Log.d("RankingRepo", "   Level4 OSU_01: 本地=${localEntry.level4Osu01}, 雲端=${cloudEntry.level4Osu01}, 最終=${mergedEntry.level4Osu01}")
-                        Log.d("RankingRepo", "   Level4 OSU_02: 本地=${localEntry.level4Osu02}, 雲端=${cloudEntry.level4Osu02}, 最終=${mergedEntry.level4Osu02}")
-                        Log.d("RankingRepo", "   Level4 OSU_03: 本地=${localEntry.level4Osu03}, 雲端=${cloudEntry.level4Osu03}, 最終=${mergedEntry.level4Osu03}")
-                        Log.d("RankingRepo", "   Level4 OSU_04: 本地=${localEntry.level4Osu04}, 雲端=${cloudEntry.level4Osu04}, 最終=${mergedEntry.level4Osu04}")
-                        Log.d("RankingRepo", "   Level4 OSU_05: 本地=${localEntry.level4Osu05}, 雲端=${cloudEntry.level4Osu05}, 最終=${mergedEntry.level4Osu05}")
-                        Log.d("RankingRepo", "   Level4 Total: ${mergedEntry.level4Total}")
 
                         // ✅ 如果合併後的數據與雲端不同，需要更新雲端
                         if (mergedEntry != cloudEntry) {
@@ -176,60 +172,43 @@ class RankingRepository {
                 Log.d("RankingRepo", "✅ Level3: ${current.level3Score} → $newScore")
             }
 
-            // ========== ✅ Level 4 的五個譜面 ==========
+            // Level 4
             41 -> if (newScore > current.level4Osu01) {
                 updatedEntry = current.copy(level4Osu01 = newScore)
                 fieldName = "level4Osu01"
                 isUpdated = true
                 Log.d("RankingRepo", "✅ OSU_01: ${current.level4Osu01} → $newScore")
-            } else {
-                Log.d("RankingRepo", "⚠️ OSU_01: $newScore ≤ ${current.level4Osu01}，不更新")
             }
-
             42 -> if (newScore > current.level4Osu02) {
                 updatedEntry = current.copy(level4Osu02 = newScore)
                 fieldName = "level4Osu02"
                 isUpdated = true
                 Log.d("RankingRepo", "✅ OSU_02: ${current.level4Osu02} → $newScore")
-            } else {
-                Log.d("RankingRepo", "⚠️ OSU_02: $newScore ≤ ${current.level4Osu02}，不更新")
             }
-
             43 -> if (newScore > current.level4Osu03) {
                 updatedEntry = current.copy(level4Osu03 = newScore)
                 fieldName = "level4Osu03"
                 isUpdated = true
                 Log.d("RankingRepo", "✅ OSU_03: ${current.level4Osu03} → $newScore")
-            } else {
-                Log.d("RankingRepo", "⚠️ OSU_03: $newScore ≤ ${current.level4Osu03}，不更新")
             }
-
             44 -> if (newScore > current.level4Osu04) {
                 updatedEntry = current.copy(level4Osu04 = newScore)
                 fieldName = "level4Osu04"
                 isUpdated = true
                 Log.d("RankingRepo", "✅ OSU_04: ${current.level4Osu04} → $newScore")
-            } else {
-                Log.d("RankingRepo", "⚠️ OSU_04: $newScore ≤ ${current.level4Osu04}，不更新")
             }
-
             45 -> if (newScore > current.level4Osu05) {
                 updatedEntry = current.copy(level4Osu05 = newScore)
                 fieldName = "level4Osu05"
                 isUpdated = true
                 Log.d("RankingRepo", "✅ OSU_05: ${current.level4Osu05} → $newScore")
-            } else {
-                Log.d("RankingRepo", "⚠️ OSU_05: $newScore ≤ ${current.level4Osu05}，不更新")
             }
         }
 
         if (isUpdated) {
-            // 1. 更新本地 StateFlow
             _scores.value = updatedEntry
             Log.d("RankingRepo", "💾 本地狀態已更新")
-            Log.d("RankingRepo", "   Level4 Total: ${updatedEntry.level4Total}")
 
-            // 2. 若是正式會員，則上傳雲端
             val currentUser = auth.currentUser
             if (currentUser != null && !currentUser.isAnonymous) {
                 uploadScoreToCloud(fieldName, newScore, updatedEntry)
@@ -240,14 +219,58 @@ class RankingRepository {
     }
 
     /**
-     * ✅ 修復：上傳完整的分數數據到雲端
-     * 確保所有欄位都正確同步，特別是總分
+     * ✅ 新增：更新關卡二的最高 Combo
      */
-    private fun uploadScoreToCloud(fieldName: String, newScore: Int, entry: ScoreEntry) {
+    fun updateLevel2MaxCombo(newCombo: Int) {
+        val current = _scores.value
+        if (newCombo > current.level2MaxCombo) {
+            val updatedEntry = current.copy(level2MaxCombo = newCombo)
+            _scores.value = updatedEntry
+
+            Log.d("RankingRepo", "✅ Level2 MaxCombo: ${current.level2MaxCombo} → $newCombo")
+
+            val currentUser = auth.currentUser
+            if (currentUser != null && !currentUser.isAnonymous) {
+                uploadScoreToCloud("level2MaxCombo", newCombo, updatedEntry)
+            }
+        }
+    }
+
+    /**
+     * ✅ 新增：標記關卡四已達成「無 Miss」
+     */
+    fun markLevel4NoMiss() {
+        val current = _scores.value
+        if (!current.level4HasNoMiss) {
+            val updatedEntry = current.copy(level4HasNoMiss = true)
+            _scores.value = updatedEntry
+
+            Log.d("RankingRepo", "✅ Level4 HasNoMiss: false → true")
+
+            val currentUser = auth.currentUser
+            if (currentUser != null && !currentUser.isAnonymous) {
+                repoScope.launch {
+                    try {
+                        val userId = currentUser.uid
+                        db.collection("user_scores").document(userId)
+                            .update("level4HasNoMiss", true)
+                            .await()
+                        Log.d("RankingRepo", "☁️ ✅ Level4 NoMiss 標記已上傳")
+                    } catch (e: Exception) {
+                        Log.e("RankingRepo", "☁️ ❌ 上傳失敗", e)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * ✅ 修復：上傳完整的分數數據到雲端
+     */
+    private fun uploadScoreToCloud(fieldName: String, newValue: Any, entry: ScoreEntry) {
         val userId = auth.currentUser?.uid ?: return
         repoScope.launch {
             try {
-                // ✅ 改為上傳完整的分數數據，確保總分正確
                 val dataMap = mapOf(
                     "level1Easy" to entry.level1Easy,
                     "level1Normal" to entry.level1Normal,
@@ -257,6 +280,7 @@ class RankingRepository {
                     "level2Easy" to entry.level2Easy,
                     "level2Normal" to entry.level2Normal,
                     "level2Hard" to entry.level2Hard,
+                    "level2MaxCombo" to entry.level2MaxCombo,  // ✅ 新增
                     "level2Total" to entry.level2Total,
 
                     "level3Score" to entry.level3Score,
@@ -266,6 +290,7 @@ class RankingRepository {
                     "level4Osu03" to entry.level4Osu03,
                     "level4Osu04" to entry.level4Osu04,
                     "level4Osu05" to entry.level4Osu05,
+                    "level4HasNoMiss" to entry.level4HasNoMiss,  // ✅ 新增
                     "level4Total" to entry.level4Total
                 )
 
@@ -274,8 +299,7 @@ class RankingRepository {
                     .await()
 
                 Log.d("RankingRepo", "☁️ ✅ 分數上傳成功")
-                Log.d("RankingRepo", "   $fieldName = $newScore")
-                Log.d("RankingRepo", "   Level4 Total = ${entry.level4Total}")
+                Log.d("RankingRepo", "   $fieldName = $newValue")
             } catch (e: Exception) {
                 Log.e("RankingRepo", "☁️ ❌ 上傳失敗", e)
             }
@@ -298,6 +322,7 @@ class RankingRepository {
                     "level2Easy" to entry.level2Easy,
                     "level2Normal" to entry.level2Normal,
                     "level2Hard" to entry.level2Hard,
+                    "level2MaxCombo" to entry.level2MaxCombo,  // ✅ 新增
                     "level2Total" to entry.level2Total,
 
                     "level3Score" to entry.level3Score,
@@ -307,6 +332,7 @@ class RankingRepository {
                     "level4Osu03" to entry.level4Osu03,
                     "level4Osu04" to entry.level4Osu04,
                     "level4Osu05" to entry.level4Osu05,
+                    "level4HasNoMiss" to entry.level4HasNoMiss,  // ✅ 新增
                     "level4Total" to entry.level4Total
                 )
 

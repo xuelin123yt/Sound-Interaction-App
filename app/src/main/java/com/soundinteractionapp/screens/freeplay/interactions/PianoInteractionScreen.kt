@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 // 確保 R 類別可以被識別
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
+import com.soundinteractionapp.utils.VolumeKeys
 
 /**
  * 鋼琴互動畫面，提供 8 個琴鍵用於音階探索。
@@ -103,12 +104,12 @@ fun RowScope.PianoKey(
     val tapDetector = Modifier.pointerInput(Unit) {
         detectTapGestures(
             onPress = { offset ->
-                isPressed = true // 按下時變色
-                soundManager.playSound(noteResId) // 播放聲音
+                isPressed = true
+                soundManager.playSound(noteResId, VolumeKeys.FREEPLAY_PIANO)  // ✅ 加上音量鍵
                 try {
-                    awaitRelease() // 等待釋放
+                    awaitRelease()
                 } finally {
-                    isPressed = false // 釋放時恢復
+                    isPressed = false
                 }
             }
         )

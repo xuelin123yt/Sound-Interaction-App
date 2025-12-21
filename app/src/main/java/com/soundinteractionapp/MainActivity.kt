@@ -37,6 +37,7 @@ import com.soundinteractionapp.data.RankingViewModel
 import com.soundinteractionapp.data.AuthViewModel
 import com.soundinteractionapp.data.ProfileViewModel
 import com.soundinteractionapp.data.LeaderboardViewModel
+import com.soundinteractionapp.data.SoundSettingsViewModel
 import com.soundinteractionapp.screens.game.levels.level1.Level1FollowBeatScreen
 import com.soundinteractionapp.screens.game.levels.level2.Level2FollowBeatScreen
 import com.soundinteractionapp.screens.game.levels.level4.Level4Screen
@@ -47,6 +48,7 @@ private const val TAG = "MainActivity"
 class MainActivity : ComponentActivity() {
 
     private lateinit var soundManager: SoundManager
+    private lateinit var soundSettingsViewModel: SoundSettingsViewModel  // ✅ 加入這行
     // ✅ 修改：細分狀態控制
     private var isLevel1Playing by mutableStateOf(false)  // Level1 是否在遊戲中
 
@@ -68,7 +70,15 @@ class MainActivity : ComponentActivity() {
         window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
             if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) hideSystemUI()
         }
+
+        // ✅ 先初始化 SoundSettingsViewModel
+        soundSettingsViewModel = SoundSettingsViewModel(this)
+
+        // ✅ 再初始化 SoundManager (不需要傳入 ViewModel，因為建構函數有預設值)
         soundManager = SoundManager(this)
+
+        // ✅ 然後連接兩者
+        soundManager.setSoundSettingsViewModel(soundSettingsViewModel)
 
         setContent {
             SoundInteractionAppTheme {
@@ -271,6 +281,7 @@ class MainActivity : ComponentActivity() {
                         Log.d(TAG, "Composing: Settings")
                         SettingScreen(
                             soundManager = soundManager,
+                            soundSettingsViewModel = soundSettingsViewModel,  // ✅ 加入這行
                             onNavigateBack = {
                                 if (!isNavigating.value) {
                                     Log.d(TAG, "Settings: Navigate Back")
@@ -357,9 +368,11 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(Screen.GameLevel3.route) {
-                        Log.d(TAG, "Composing: GameLevel3")
                         Level3PitchScreen(
-                            onNavigateBack = { if (!isNavigating.value) navController.popBackStack() },
+                            onNavigateBack = {
+                                if (!isNavigating.value) navController.popBackStack()
+                            },
+                            soundManager = soundManager,  // ✅ 確保有這行
                             rankingViewModel = rankingViewModel
                         )
                     }

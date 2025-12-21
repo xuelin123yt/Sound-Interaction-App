@@ -1,6 +1,5 @@
 package com.soundinteractionapp.screens.freeplay.interactions
 
-import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -17,21 +16,15 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.screens.game.levels.VideoBackground
+import com.soundinteractionapp.utils.VolumeKeys
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -39,6 +32,7 @@ import kotlin.random.Random
 data class CatAsset(
     val frames: List<Int>,
     val soundRes: Int,
+    val volumeKey: String,  // ✅ 新增
     val name: String
 )
 
@@ -60,17 +54,20 @@ fun CatInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager)
         listOf(
             CatAsset(
                 frames = listOf(R.drawable.cat1_2, R.drawable.cat1_3, R.drawable.cat1_4),
-                soundRes = R.raw.cat_meow,
+                soundRes = R.raw.meow1,
+                volumeKey = VolumeKeys.FREEPLAY_CAT1,
                 name = "Orange Cat"
             ),
             CatAsset(
                 frames = listOf(R.drawable.cat2_1, R.drawable.cat2_2, R.drawable.cat2_3),
                 soundRes = R.raw.meow2,
+                volumeKey = VolumeKeys.FREEPLAY_CAT2,
                 name = "Grey Cat"
             ),
             CatAsset(
                 frames = listOf(R.drawable.cat3_1, R.drawable.cat3_2, R.drawable.cat3_3),
                 soundRes = R.raw.meow3,
+                volumeKey = VolumeKeys.FREEPLAY_CAT3,  // ⚠️ 如果這個常數不存在會出錯
                 name = "White Cat"
             )
         )
@@ -118,12 +115,16 @@ fun CatInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager)
         )
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp).align(Alignment.TopStart)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
         ) {
             Button(
                 onClick = {
                     if (isNavigating) return@Button
                     isNavigating = true
+                    soundManager.playSFX("cancel")
                     onNavigateBack()
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -207,10 +208,10 @@ fun RotatingCat(
             .size(catDisplaySize)
             .scale(finalScale)
             .scale(scaleX = directionScaleX, scaleY = 1f)
-            .pointerInput(Unit) {
+            .pointerInput(catData) {  // ✅ 改成 catData，當貓咪改變時重新建立監聽器
                 detectTapGestures(onTap = {
                     try {
-                        soundManager.playSound(catData.soundRes)
+                        soundManager.playSound(catData.soundRes, catData.volumeKey)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }

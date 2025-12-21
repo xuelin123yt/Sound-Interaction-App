@@ -6,7 +6,6 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.media.MediaPlayer
 import android.media.SoundPool
 import android.net.Uri
 import android.util.Log
@@ -17,6 +16,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -61,7 +61,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.soundinteractionapp.GameEngine
 import com.soundinteractionapp.R
+import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.data.RankingViewModel
+import com.soundinteractionapp.screens.profile.models.AchievementManager
+import com.soundinteractionapp.utils.VolumeKeys
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -97,11 +100,10 @@ fun VideoBackground(videoResId: Int) {
 @Composable
 fun Level3PitchScreen(
     onNavigateBack: () -> Unit,
+    soundManager: SoundManager,
     rankingViewModel: RankingViewModel = viewModel()
 ) {
     val context = LocalContext.current
-
-    // ✅ 防抖狀態
     var isNavigating by remember { mutableStateOf(false) }
 
     var birdY by remember { mutableFloatStateOf(500f) }
@@ -130,20 +132,21 @@ fun Level3PitchScreen(
     LaunchedEffect(isGameOver) {
         if (isGameOver) {
             rankingViewModel.onGameFinished(levelId = 3, finalScore = score)
-            Log.d("Level3", "遊戲結束，嘗試更新分數: $score")
+            Log.d("Level3", "遊戲結束,嘗試更新分數: $score")
+            soundManager.stopMusic()
         }
     }
 
+    // ✅ 背景音樂處理
     val musicList = listOf(R.raw.music1, R.raw.music2, R.raw.music3)
     val randomMusicResId = remember { musicList.random() }
+
     DisposableEffect(Unit) {
-        val mediaPlayer = MediaPlayer.create(context, randomMusicResId)
-        mediaPlayer.isLooping = true
-        mediaPlayer.setVolume(0.6f, 0.6f)
-        mediaPlayer.start()
+        // ✅ 使用 playGameMusic() 播放背景音樂（現在支持循環播放）
+        soundManager.playGameMusic(randomMusicResId, VolumeKeys.LEVEL3_MUSIC)
+
         onDispose {
-            if (mediaPlayer.isPlaying) mediaPlayer.stop()
-            mediaPlayer.release()
+            soundManager.stopMusic()
         }
     }
 
@@ -158,8 +161,6 @@ fun Level3PitchScreen(
             )
             .build()
     }
-    val pipeSoundId = remember { soundPool.load(context, R.raw.pipe_music, 1) }
-    val hitSoundId = remember { soundPool.load(context, R.raw.pipe_music, 1) }
 
     DisposableEffect(Unit) {
         onDispose { soundPool.release() }
@@ -202,8 +203,12 @@ fun Level3PitchScreen(
                         val readCount = audioRecord.read(buffer, 0, bufferSize)
                         if (readCount > 0) GameEngine.processAudio(buffer, readCount)
                     }
-                } catch (e: Exception) { Log.e("Mic", "Error: ${e.message}") }
-                finally { audioRecord.stop(); audioRecord.release() }
+                } catch (e: Exception) {
+                    Log.e("Mic", "Error: ${e.message}")
+                } finally {
+                    audioRecord.stop()
+                    audioRecord.release()
+                }
             }
         }
     }
@@ -218,11 +223,11 @@ fun Level3PitchScreen(
             val newHp = if (state.size >= 5) state[4].toInt() else currentHp
 
             if (newScore > score) {
-                soundPool.play(pipeSoundId, 0.3f, 0.3f, 1, 0, 1f)
+                soundManager.playGameSFX("level3_correct", VolumeKeys.LEVEL3_EFFECT)
             }
 
             if (newHp < currentHp) {
-                soundPool.play(hitSoundId, 1.0f, 1.0f, 1, 0, 0.6f)
+                soundManager.playGameSFX("level3_hit", VolumeKeys.LEVEL3_EFFECT)
             }
 
             score = newScore
@@ -365,36 +370,126 @@ fun Level3PitchScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Text(text = "遊戲結束!", fontSize = 60.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF4444), fontFamily = GameFont)
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(text = "血量耗盡", fontSize = 28.sp, color = Color.Gray, fontFamily = GameFont, modifier = Modifier.padding(bottom = 16.dp))
-                    Text(text = "最終分數: $score", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = GameFont)
-                    Spacer(modifier = Modifier.height(48.dp))
+                    // ✅ 新增：用於追蹤「首次解鎖」的成就
+                    var newlyUnlockedAchievements by remember { mutableStateOf<List<String>>(emptyList()) }
+                    val coroutineScope = rememberCoroutineScope()
 
-                    // ✅ 加入防抖
+                    // ✅ 結算時檢查成就
+                    LaunchedEffect(Unit) {
+                        coroutineScope.launch {
+                            try {
+                                val achievementManager = AchievementManager()
+                                val currentScores = rankingViewModel.scores.value
+
+                                val newlyUnlocked = achievementManager.checkAndUnlockAchievements(
+                                    scoreEntry = currentScores,
+                                    hasFeedback = false,
+                                    hasAvatar = false
+                                )
+
+                                val gameRelatedAchievements = mutableListOf<String>()
+
+                                if (3 in newlyUnlocked && currentScores.level3Score >= 3000) {
+                                    gameRelatedAchievements.add("Voice Flight Ace／聲控飛行高手")
+                                }
+
+                                if (gameRelatedAchievements.isNotEmpty()) {
+                                    newlyUnlockedAchievements = gameRelatedAchievements
+                                    android.util.Log.d("Level3Result", "🎉 新解鎖成就: $gameRelatedAchievements")
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("Level3Result", "❌ 檢查成就失敗", e)
+                            }
+                        }
+                    }
+
+                    // ✅ 所有元素縮小 20%（原尺寸 × 0.8）
+                    Text(
+                        text = "遊戲結束!",
+                        fontSize = 48.sp,  // 原 60sp × 0.8
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFF4444),
+                        fontFamily = GameFont
+                    )
+                    Spacer(modifier = Modifier.height(19.dp))  // 原 24dp × 0.8
+                    Text(
+                        text = "血量耗盡",
+                        fontSize = 22.sp,  // 原 28sp × 0.8
+                        color = Color.Gray,
+                        fontFamily = GameFont,
+                        modifier = Modifier.padding(bottom = 13.dp)  // 原 16dp × 0.8
+                    )
+                    Text(
+                        text = "最終分數: $score",
+                        fontSize = 32.sp,  // 原 40sp × 0.8
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontFamily = GameFont
+                    )
+
+                    // ✅ 顯示新解鎖的成就（縮小 20%）
+                    if (newlyUnlockedAchievements.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(19.dp))  // 原 24dp × 0.8
+
+                        newlyUnlockedAchievements.forEach { achievementName ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f)),
+                                border = BorderStroke(1.dp, Color(0xFF4CAF50)),
+                                modifier = Modifier.width(280.dp)  // 原 350dp × 0.8
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),  // 原 12dp × 0.8
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🏆", fontSize = 19.sp)  // 原 24sp × 0.8
+                                    Spacer(modifier = Modifier.width(10.dp))  // 原 12dp × 0.8
+                                    Column {
+                                        Text(
+                                            "成就解鎖！",
+                                            fontSize = 13.sp,  // 原 16sp × 0.8
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF4CAF50)
+                                        )
+                                        Text(
+                                            achievementName,
+                                            fontSize = 11.sp,  // 原 14sp × 0.8
+                                            color = Color.White.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (achievementName != newlyUnlockedAchievements.last()) {
+                                Spacer(modifier = Modifier.height(6.dp))  // 原 8dp × 0.8
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(38.dp))  // 原 48dp × 0.8
+
                     Button(
                         onClick = {
                             if (isNavigating) return@Button
                             isNavigating = true
+                            soundManager.playSFX("cancel")
                             onNavigateBack()
                         },
-                        modifier = Modifier.size(width = 200.dp, height = 60.dp),
+                        modifier = Modifier.size(width = 160.dp, height = 48.dp),  // 原 200dp × 60dp × 0.8
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.DarkGray,
                             disabledContainerColor = Color.DarkGray.copy(alpha = 0.7f)
                         ),
                         enabled = !isNavigating
                     ) {
-                        Text(text = "回主選單", fontSize = 20.sp, fontFamily = GameFont)
+                        Text(text = "回主選單", fontSize = 16.sp, fontFamily = GameFont)  // 原 20sp × 0.8
                     }
                 }
             }
         } else {
-            // ✅ 加入防抖
             Button(
                 onClick = {
                     if (isNavigating) return@Button
                     isNavigating = true
+                    soundManager.playSFX("cancel")
                     onNavigateBack()
                 },
                 modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),

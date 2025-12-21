@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
+import com.soundinteractionapp.utils.VolumeKeys
 
 /**
  * 爵士鼓組件數據類別
@@ -151,9 +152,7 @@ fun DrumPad(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = {
-                        // 播放聲音
-                        soundManager.playSound(data.soundResId)
-                        // 觸發視覺狀態
+                        soundManager.playSound(data.soundResId, VolumeKeys.FREEPLAY_DRUM)
                         onTap()
                     }
                 )

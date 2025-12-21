@@ -40,11 +40,25 @@ fun RainInteractionScreen(
         listOf(R.raw.rainbackground1, R.raw.rainbackground2, R.raw.rainbackground3)
     }
 
+    // ✅ 取得音量設定
+    val rainVolume = remember {
+        derivedStateOf {
+            val detailVolume = soundManager.getRelaxVolume("rain")
+            val masterVolume = soundManager.masterVolume
+            val sfxVolume = soundManager.sfxVolume
+            val isMuted = soundManager.isMasterMuted || soundManager.isSfxMuted
+
+            if (isMuted) 0f else (masterVolume * sfxVolume * detailVolume)
+        }
+    }
+
     val audioPlayer = remember {
         try {
             MediaPlayer.create(context, R.raw.rain_sound)?.apply {
                 isLooping = true
-                setVolume(0.8f, 0.8f)
+                // ✅ 套用音量設定
+                val vol = rainVolume.value
+                setVolume(vol, vol)
             }
         } catch (e: Exception) { null }
     }
@@ -53,6 +67,14 @@ fun RainInteractionScreen(
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
+        }
+    }
+
+    // ✅ 監聽音量變化並更新
+    LaunchedEffect(rainVolume.value) {
+        audioPlayer?.let {
+            val vol = rainVolume.value
+            it.setVolume(vol, vol)
         }
     }
 
@@ -112,12 +134,22 @@ fun RainInteractionScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Button(
-                    onClick = { if (!isNavigating) { isNavigating = true; onNavigateBack() } },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f))
+                    onClick = {
+                        if (!isNavigating) {
+                            isNavigating = true
+                            soundManager.playSFX("cancel")
+                            onNavigateBack()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.5f)),
+                    enabled = !isNavigating
                 ) { Text("← 返回", color = Color.White) }
 
                 Button(
-                    onClick = { bgIndex = (bgIndex + 1) % videoList.size },
+                    onClick = {
+                        soundManager.playSFX("options2")
+                        bgIndex = (bgIndex + 1) % videoList.size
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
                 ) { Text("切換場景 (${bgIndex + 1}/3)") }
             }

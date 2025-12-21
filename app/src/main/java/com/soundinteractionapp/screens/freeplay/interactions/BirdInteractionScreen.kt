@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.screens.game.levels.VideoBackground
+import com.soundinteractionapp.utils.VolumeKeys
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -199,8 +200,7 @@ fun RotatingBird(
                 indication = null
             ) {
                 isTapped = true
-                // 播放單一鳥叫聲
-                soundManager.playSound(R.raw.bird_sound)
+                soundManager.playSound(R.raw.bird_sound, VolumeKeys.FREEPLAY_BIRD)
                 Log.d("BirdInteraction", "Clicked ${birdData.name}")
             }
     ) {

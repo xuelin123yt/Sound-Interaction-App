@@ -43,6 +43,7 @@ fun Level4Screen(
                 beatmaps = beatmaps,
                 isGuest = isGuest,
                 scoreEntry = scoreEntry,
+                soundManager = soundManager,  // ✅ 新增這行
                 onSongSelected = { beatmapId, autoMode ->  // ✅ 接收 AUTO 模式參數
                     selectedBeatmapId = beatmapId
                     isAutoMode = autoMode

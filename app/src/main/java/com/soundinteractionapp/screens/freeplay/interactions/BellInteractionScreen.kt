@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
+import com.soundinteractionapp.utils.VolumeKeys
 
 private data class BellItem(val name: String, val imageResId: Int, val soundResId: Int)
 
@@ -121,7 +122,9 @@ fun RowScope.BellImageButton(
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
-                        onClick = { soundManager.playSound(soundResId) }
+                        onClick = {
+                            soundManager.playSound(soundResId, VolumeKeys.FREEPLAY_BELL)
+                        }
                     ),
                 contentAlignment = Alignment.Center
             ) {

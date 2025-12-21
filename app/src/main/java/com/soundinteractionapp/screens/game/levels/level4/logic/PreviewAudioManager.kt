@@ -3,6 +3,7 @@ package com.soundinteractionapp.screens.game.levels.level4.logic
 import android.content.Context
 import android.media.MediaPlayer
 import android.util.Log
+import com.soundinteractionapp.SoundManager
 import kotlinx.coroutines.*
 
 /**
@@ -10,22 +11,25 @@ import kotlinx.coroutines.*
  * - 支援淡入淡出效果
  * - 自動循環播放
  * - 歌曲切換時平滑過渡
+ * - ✅ 支援各別歌曲音量控制
  */
-class PreviewAudioManager(private val context: Context) {
+class PreviewAudioManager(
+    private val context: Context,
+    private val soundManager: SoundManager  // ✅ 新增：接收 SoundManager
+) {
 
     private var currentPlayer: MediaPlayer? = null
     private var fadeJob: Job? = null
     private var currentBeatmapId: Int? = null
-    private var previewStartTime: Int = 0  // ✅ 記錄試聽起始位置
-    private var pausedPosition: Int = 0    // ✅ 記錄暫停時的位置
-    private var isPaused: Boolean = false  // ✅ 記錄是否已暫停
+    private var previewStartTime: Int = 0
+    private var pausedPosition: Int = 0
+    private var isPaused: Boolean = false
 
     private val TAG = "PreviewAudioManager"
 
     // 淡入淡出參數
-    private val FADE_DURATION = 300L   // 淡入淡出時長（毫秒）- 0.3 秒
-    private val FADE_STEPS = 15        // 音量變化步數
-    private val MAX_VOLUME = 0.65f     // 最大音量（避免過大）
+    private val FADE_DURATION = 300L
+    private val FADE_STEPS = 15
 
     /**
      * 播放試聽音樂
@@ -34,54 +38,56 @@ class PreviewAudioManager(private val context: Context) {
      * @param beatmapId 譜面 ID（用於判斷是否切換歌曲）
      */
     fun playPreview(audioResId: Int, startTime: Int, beatmapId: Int) {
-        // 如果是同一首歌，不重複播放
         if (currentBeatmapId == beatmapId && currentPlayer?.isPlaying == true) {
             Log.d(TAG, "Already playing beatmap $beatmapId")
             return
         }
 
-        // 切換到新歌曲
         if (currentBeatmapId != beatmapId) {
             Log.d(TAG, "Switching from beatmap $currentBeatmapId to $beatmapId")
             stopWithFadeOut {
                 startNewPreview(audioResId, startTime, beatmapId)
             }
         } else {
-            // 同一首歌但播放器已停止，重新播放
             startNewPreview(audioResId, startTime, beatmapId)
         }
     }
 
     /**
      * 開始播放新的試聽音樂
+     * ✅ 根據歌曲 ID 使用對應的音量設定
      */
     private fun startNewPreview(audioResId: Int, startTime: Int, beatmapId: Int) {
         try {
-            // 釋放舊播放器
             currentPlayer?.release()
-
-            // ✅ 記錄試聽起始位置
             previewStartTime = startTime
 
-            // 創建新播放器
-            currentPlayer = MediaPlayer.create(context, audioResId)?.apply {
-                setVolume(0f, 0f)  // 初始音量為 0
-                seekTo(startTime)
-                isLooping = false   // ✅ 關閉自動循環，改用手動控制
+            // ✅ 根據 beatmapId 獲取對應的試聽音量
+            val songVolume = soundManager.getLevel4SongVolume(beatmapId)
+            val finalVolume = if (soundManager.isMasterMuted) {
+                0f
+            } else {
+                soundManager.masterVolume * songVolume
+            }
 
-                // ✅ 設置循環監聽器：播放結束後回到試聽起始位置
+            Log.d(TAG, "Starting preview - beatmapId=$beatmapId, songVolume=$songVolume, finalVolume=$finalVolume")
+
+            currentPlayer = MediaPlayer.create(context, audioResId)?.apply {
+                setVolume(0f, 0f)  // 初始音量為 0（準備淡入）
+                seekTo(startTime)
+                isLooping = false
+
                 setOnCompletionListener { mp ->
                     Log.d(TAG, "Preview completed, restarting from $previewStartTime")
                     try {
                         mp.seekTo(previewStartTime)
                         mp.start()
-                        fadeIn()  // 重新淡入
+                        fadeIn(finalVolume)  // ✅ 重新淡入
                     } catch (e: Exception) {
                         Log.e(TAG, "Error restarting preview", e)
                     }
                 }
 
-                // 設置錯誤監聽器
                 setOnErrorListener { mp, what, extra ->
                     Log.e(TAG, "MediaPlayer error: what=$what, extra=$extra")
                     true
@@ -89,9 +95,7 @@ class PreviewAudioManager(private val context: Context) {
 
                 start()
                 currentBeatmapId = beatmapId
-
-                // 開始淡入
-                fadeIn()
+                fadeIn(finalVolume)  // ✅ 開始淡入
             }
 
             if (currentPlayer == null) {
@@ -106,13 +110,14 @@ class PreviewAudioManager(private val context: Context) {
 
     /**
      * 淡入效果
+     * ✅ 支援動態最大音量
      */
-    private fun fadeIn() {
+    private fun fadeIn(targetVolume: Float) {
         fadeJob?.cancel()
         fadeJob = CoroutineScope(Dispatchers.Main).launch {
             try {
                 val stepDuration = FADE_DURATION / FADE_STEPS
-                val volumeStep = MAX_VOLUME / FADE_STEPS
+                val volumeStep = targetVolume / FADE_STEPS
 
                 for (i in 0..FADE_STEPS) {
                     val volume = volumeStep * i
@@ -120,9 +125,8 @@ class PreviewAudioManager(private val context: Context) {
                     delay(stepDuration)
                 }
 
-                // 確保最終音量正確
-                currentPlayer?.setVolume(MAX_VOLUME, MAX_VOLUME)
-                Log.d(TAG, "Fade in completed")
+                currentPlayer?.setVolume(targetVolume, targetVolume)
+                Log.d(TAG, "Fade in completed to $targetVolume")
             } catch (e: CancellationException) {
                 Log.d(TAG, "Fade in cancelled")
             } catch (e: Exception) {
@@ -133,14 +137,24 @@ class PreviewAudioManager(private val context: Context) {
 
     /**
      * 淡出並停止
-     * @param onComplete 淡出完成後的回調
      */
     private fun stopWithFadeOut(onComplete: () -> Unit = {}) {
         fadeJob?.cancel()
         fadeJob = CoroutineScope(Dispatchers.Main).launch {
             try {
                 val stepDuration = FADE_DURATION / FADE_STEPS
-                val currentVolume = MAX_VOLUME
+
+                // ✅ 獲取當前音量作為起始點
+                val currentVolume = try {
+                    // MediaPlayer 沒有 getVolume()，所以使用預設值
+                    currentBeatmapId?.let { id ->
+                        val songVolume = soundManager.getLevel4SongVolume(id)
+                        soundManager.masterVolume * songVolume
+                    } ?: 0.65f
+                } catch (e: Exception) {
+                    0.65f
+                }
+
                 val volumeStep = currentVolume / FADE_STEPS
 
                 for (i in FADE_STEPS downTo 0) {
@@ -149,7 +163,6 @@ class PreviewAudioManager(private val context: Context) {
                     delay(stepDuration)
                 }
 
-                // 停止並釋放播放器
                 currentPlayer?.apply {
                     if (isPlaying) stop()
                     release()
@@ -158,8 +171,6 @@ class PreviewAudioManager(private val context: Context) {
                 currentBeatmapId = null
 
                 Log.d(TAG, "Fade out completed")
-
-                // 執行回調
                 onComplete()
 
             } catch (e: CancellationException) {
@@ -211,16 +222,27 @@ class PreviewAudioManager(private val context: Context) {
 
     /**
      * 恢復播放（從暫停位置繼續）
+     * ✅ 恢復時重新計算音量
      */
     fun resume() {
         currentPlayer?.let { player ->
             if (isPaused) {
                 try {
-                    player.seekTo(pausedPosition)
-                    player.start()
-                    isPaused = false
-                    fadeIn()
-                    Log.d(TAG, "Resumed from position: $pausedPosition")
+                    // ✅ 恢復時重新計算音量
+                    currentBeatmapId?.let { id ->
+                        val songVolume = soundManager.getLevel4SongVolume(id)
+                        val finalVolume = if (soundManager.isMasterMuted) {
+                            0f
+                        } else {
+                            soundManager.masterVolume * songVolume
+                        }
+
+                        player.seekTo(pausedPosition)
+                        player.start()
+                        isPaused = false
+                        fadeIn(finalVolume)
+                        Log.d(TAG, "Resumed from position: $pausedPosition with volume: $finalVolume")
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error resuming", e)
                 }
