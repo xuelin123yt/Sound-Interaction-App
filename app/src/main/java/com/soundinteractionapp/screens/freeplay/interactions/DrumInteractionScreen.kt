@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
@@ -16,10 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import com.soundinteractionapp.R
@@ -27,15 +30,15 @@ import com.soundinteractionapp.SoundManager
 import com.soundinteractionapp.utils.VolumeKeys
 
 /**
- * 爵士鼓組件數據類別 - 使用百分比定位
+ * 爵士鼓組件數據類別 - 基於圖片原始比例的百分比定位
  */
 data class DrumComponentData(
     val name: String,
     val soundResId: Int,
-    val widthPercent: Float,    // 寬度百分比 (0-1)
-    val heightPercent: Float,   // 高度百分比 (0-1)
-    val offsetXPercent: Float,  // X 偏移百分比 (0-1)
-    val offsetYPercent: Float   // Y 偏移百分比 (0-1)
+    val widthPercent: Float,
+    val heightPercent: Float,
+    val centerXPercent: Float,  // 中心點 X 百分比
+    val centerYPercent: Float   // 中心點 Y 百分比
 )
 
 @Composable
@@ -49,41 +52,68 @@ fun DrumInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager
         }
     }
 
-    // ✅ 使用百分比定位，適應所有螢幕比例
+    // ✅ 基於圖片內容的百分比定位（中心點）- 針對 16:9 (1920x1080) 精確優化
     val drumComponents = remember {
         listOf(
-            // Hi-Hat (左上)
+            // Hi-Hat (左下金色小鈸)
             DrumComponentData("Hi-Hat", R.raw.drum_cymbal_closed,
-                0.18f, 0.28f, 0.02f, 0.30f),
-            // Snare (左中下)
-            DrumComponentData("Snare", R.raw.drum_snare_hard,
-                0.15f, 0.30f, 0.22f, 0.45f),
-            // Tom 1 (中左上)
-            DrumComponentData("Tom 1", R.raw.drum_tom_hi_hard,
-                0.12f, 0.22f, 0.28f, 0.18f),
-            // Tom 2 (中右上)
-            DrumComponentData("Tom 2", R.raw.drum_tom_mid_soft,
-                0.12f, 0.22f, 0.44f, 0.18f),
-            // Ride (右上)
-            DrumComponentData("Ride", R.raw.drum_cymbal_hard,
-                0.22f, 0.35f, 0.72f, 0.05f),
-            // Floor Tom (右下)
-            DrumComponentData("Floor Tom", R.raw.drum_tom_lo_soft,
-                0.18f, 0.30f, 0.62f, 0.48f),
-            // Kick (中下)
-            DrumComponentData("Kick", R.raw.drum_bass_hard,
-                0.14f, 0.30f, 0.38f, 0.52f),
-            // Crash Cymbal (左上方)
+                0.14f, 0.22f, 0.19f, 0.48f),
+            // Crash Cymbal (左上大鈸)
             DrumComponentData("Crash Cymbal", R.raw.drum_cymbal_hard,
-                0.22f, 0.32f, 0.12f, 0.02f)
+                0.20f, 0.26f, 0.24f, 0.18f),
+            // Snare (前方左側白色小鼓)
+            DrumComponentData("Snare", R.raw.drum_snare_hard,
+                0.16f, 0.20f, 0.36f, 0.63f),
+            // Tom 1 (中左上方小鼓) - 正方形
+            DrumComponentData("Tom 1", R.raw.drum_tom_hi_hard,
+                0.14f, 0.14f, 0.42f, 0.30f),
+            // Tom 2 (中右上方小鼓) - 正方形
+            DrumComponentData("Tom 2", R.raw.drum_tom_mid_soft,
+                0.14f, 0.14f, 0.56f, 0.30f),
+            // Kick (中間大鼓)
+            DrumComponentData("Kick", R.raw.drum_bass_hard,
+                0.13f, 0.24f, 0.52f, 0.70f),
+            // Floor Tom (右下大鼓) - 往右一點
+            DrumComponentData("Floor Tom", R.raw.drum_tom_lo_soft,
+                0.15f, 0.20f, 0.70f, 0.66f),
+            // Ride (右上大鈸) - 範圍大一點
+            DrumComponentData("Ride", R.raw.drum_cymbal_hard,
+                0.25f, 0.32f, 0.80f, 0.24f)
         )
     }
 
     var tappedDrumId by remember { mutableStateOf<Int?>(null) }
 
+    // 取得圖片原始尺寸
+    val context = LocalContext.current
+    val imageRatio = remember {
+        val drawable = context.resources.getDrawable(R.drawable.drum_background, null)
+        drawable.intrinsicWidth.toFloat() / drawable.intrinsicHeight.toFloat()
+    }
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
+        val screenRatio = screenWidth / screenHeight
+
+        // ✅ 計算圖片實際顯示區域（考慮 Crop 裁切）
+        val (imageDisplayWidth, imageDisplayHeight, imageOffsetX, imageOffsetY) = remember(screenWidth, screenHeight) {
+            if (screenRatio > imageRatio) {
+                // 螢幕較寬，圖片寬度填滿，高度會被裁切
+                val displayWidth = screenWidth
+                val displayHeight = screenWidth / imageRatio
+                val offsetX = 0.dp
+                val offsetY = (screenHeight - displayHeight) / 2
+                listOf(displayWidth, displayHeight, offsetX, offsetY)
+            } else {
+                // 螢幕較高，圖片高度填滿，寬度會被裁切
+                val displayHeight = screenHeight
+                val displayWidth = screenHeight * imageRatio
+                val offsetX = (screenWidth - displayWidth) / 2
+                val offsetY = 0.dp
+                listOf(displayWidth, displayHeight, offsetX, offsetY)
+            }
+        }
 
         Image(
             painter = painterResource(id = R.drawable.drum_background),
@@ -96,8 +126,10 @@ fun DrumInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager
             DrumPad(
                 id = index,
                 data = data,
-                screenWidth = screenWidth,
-                screenHeight = screenHeight,
+                imageDisplayWidth = imageDisplayWidth,
+                imageDisplayHeight = imageDisplayHeight,
+                imageOffsetX = imageOffsetX,
+                imageOffsetY = imageOffsetY,
                 isTapped = tappedDrumId == index,
                 soundManager = soundManager,
                 onTap = { tappedDrumId = index }
@@ -139,8 +171,10 @@ fun DrumInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager
 fun DrumPad(
     id: Int,
     data: DrumComponentData,
-    screenWidth: androidx.compose.ui.unit.Dp,
-    screenHeight: androidx.compose.ui.unit.Dp,
+    imageDisplayWidth: Dp,
+    imageDisplayHeight: Dp,
+    imageOffsetX: Dp,
+    imageOffsetY: Dp,
     isTapped: Boolean,
     soundManager: SoundManager,
     onTap: () -> Unit
@@ -151,24 +185,21 @@ fun DrumPad(
         label = "drumPadScale"
     )
 
-    val colorOverlay by animateColorAsState(
-        targetValue = Color.Transparent,
-        animationSpec = tween(durationMillis = 100),
-        label = "drumColor"
-    )
-
-    // ✅ 根據螢幕尺寸計算實際位置和大小
-    val actualWidth = screenWidth * data.widthPercent
-    val actualHeight = screenHeight * data.heightPercent
-    val actualOffsetX = screenWidth * data.offsetXPercent
-    val actualOffsetY = screenHeight * data.offsetYPercent
+    // ✅ 根據圖片實際顯示區域計算位置
+    val actualWidth = imageDisplayWidth * data.widthPercent
+    val actualHeight = imageDisplayHeight * data.heightPercent
+    val centerX = imageOffsetX + imageDisplayWidth * data.centerXPercent
+    val centerY = imageOffsetY + imageDisplayHeight * data.centerYPercent
+    val actualOffsetX = centerX - actualWidth / 2
+    val actualOffsetY = centerY - actualHeight / 2
 
     Box(
         modifier = Modifier
             .offset(x = actualOffsetX, y = actualOffsetY)
             .size(actualWidth, actualHeight)
             .scale(scale)
-            .background(color = colorOverlay, shape = MaterialTheme.shapes.extraLarge)
+            // ✅ 移除淡紫色背景
+            // .background(Color(0x4DBA68C8))
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = {
