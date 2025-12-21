@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
@@ -38,7 +40,7 @@ import com.soundinteractionapp.SoundManager
 data class RelaxMenuItem(
     val id: Int,
     val categoryName: String,
-    val icon: String,
+    val iconResId: Int,  // ✅ 改為 Int 類型，用於存儲 drawable 資源 ID
     val primaryColor: Color,
     val secondaryColor: Color,
     val description: String,
@@ -79,7 +81,7 @@ fun RelaxScreenContent(
             RelaxMenuItem(
                 id = 0,
                 categoryName = "雨聲",
-                icon = "🌧️",
+                iconResId = R.drawable.mode2_icon1,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFF81D4FA),
                 secondaryColor = Color(0xFFB3E5FC),
                 description = "舒緩的雨滴聲",
@@ -89,7 +91,7 @@ fun RelaxScreenContent(
             RelaxMenuItem(
                 id = 1,
                 categoryName = "海浪",
-                icon = "🌊",
+                iconResId = R.drawable.mode2_icon2,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFF4FC3F7),
                 secondaryColor = Color(0xFF81D4FA),
                 description = "平靜的海浪聲",
@@ -99,7 +101,7 @@ fun RelaxScreenContent(
             RelaxMenuItem(
                 id = 2,
                 categoryName = "微風",
-                icon = "🍃",
+                iconResId = R.drawable.mode2_icon3,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFF81C784),
                 secondaryColor = Color(0xFFA5D6A7),
                 description = "輕柔的風聲",
@@ -135,17 +137,17 @@ fun RelaxScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF1976D2),
-                        contentColor = Color.White,  // ✅ 新增這行
+                        contentColor = Color.White,
                         disabledContainerColor = Color(0xFF1976D2).copy(alpha = 0.7f),
-                        disabledContentColor = Color.White.copy(alpha = 0.7f)  // ✅ 新增這行
+                        disabledContentColor = Color.White.copy(alpha = 0.7f)
                     ),
                     modifier = Modifier.height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     enabled = !isNavigating
                 ) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = null, tint = Color.White)  // ✅ 加 tint
+                    Icon(Icons.Filled.ArrowBack, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(8.dp))
-                    Text("返回", style = MaterialTheme.typography.titleMedium, color = Color.White)  // ✅ 加 color
+                    Text("返回", style = MaterialTheme.typography.titleMedium, color = Color.White)
                 }
 
                 Text(
@@ -283,9 +285,11 @@ fun ExpandedContentRelax(item: RelaxMenuItem) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text(
-            text = item.icon,
-            fontSize = 64.sp
+        // ✅ 使用 Image 顯示圖片
+        Image(
+            painter = painterResource(id = item.iconResId),
+            contentDescription = item.categoryName,
+            modifier = Modifier.size(80.dp)
         )
 
         Column(
@@ -324,10 +328,13 @@ fun CollapsedContentRelax(item: RelaxMenuItem) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = item.icon,
-            fontSize = 48.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
+        // ✅ 使用 Image 顯示圖片
+        Image(
+            painter = painterResource(id = item.iconResId),
+            contentDescription = item.categoryName,
+            modifier = Modifier
+                .size(60.dp)
+                .padding(bottom = 16.dp)
         )
 
         item.categoryName.forEach { char ->

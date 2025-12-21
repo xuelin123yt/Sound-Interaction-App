@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +24,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
@@ -38,7 +41,7 @@ import com.soundinteractionapp.SoundManager
 data class TaikoMenuItem(
     val id: Int,
     val categoryName: String,
-    val icon: String,
+    val iconResId: Int,  // ✅ 改為圖片資源 ID
     val primaryColor: Color,
     val secondaryColor: Color,
     val description: String,
@@ -82,7 +85,7 @@ fun FreePlayScreenContent(
             TaikoMenuItem(
                 id = 0,
                 categoryName = "貓咪",
-                icon = "🐾",
+                iconResId = R.drawable.mode1_icon1,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFFFFCC80),
                 secondaryColor = Color(0xFFFFE0B2),
                 description = "可愛的喵喵聲",
@@ -92,7 +95,7 @@ fun FreePlayScreenContent(
             TaikoMenuItem(
                 id = 1,
                 categoryName = "狗狗",
-                icon = "🐕",
+                iconResId = R.drawable.mode1_icon2,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFFA1887F),
                 secondaryColor = Color(0xFFBCAAA4),
                 description = "忠誠的汪汪聲",
@@ -102,7 +105,7 @@ fun FreePlayScreenContent(
             TaikoMenuItem(
                 id = 2,
                 categoryName = "鳥兒",
-                icon = "🐦",
+                iconResId = R.drawable.mode1_icon3,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFF81D4FA),
                 secondaryColor = Color(0xFFB3E5FC),
                 description = "清脆的啾啾聲",
@@ -112,7 +115,7 @@ fun FreePlayScreenContent(
             TaikoMenuItem(
                 id = 3,
                 categoryName = "鋼琴",
-                icon = "🎹",
+                iconResId = R.drawable.mode1_icon4,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFF9FA8DA),
                 secondaryColor = Color(0xFFC5CAE9),
                 description = "優美的琴聲",
@@ -122,7 +125,7 @@ fun FreePlayScreenContent(
             TaikoMenuItem(
                 id = 4,
                 categoryName = "爵士鼓",
-                icon = "🥁",
+                iconResId = R.drawable.mode1_icon5,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFFEF9A9A),
                 secondaryColor = Color(0xFFFFCDD2),
                 description = "動感的節奏",
@@ -132,7 +135,7 @@ fun FreePlayScreenContent(
             TaikoMenuItem(
                 id = 5,
                 categoryName = "鈴鐺",
-                icon = "🔔",
+                iconResId = R.drawable.mode1_icon6,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFFFFF59D),
                 secondaryColor = Color(0xFFFFF9C4),
                 description = "響亮的叮噹聲",
@@ -168,17 +171,17 @@ fun FreePlayScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFD32F2F),
-                        contentColor = Color.White,  // ✅ 新增這行
+                        contentColor = Color.White,
                         disabledContainerColor = Color(0xFFD32F2F).copy(alpha = 0.7f),
-                        disabledContentColor = Color.White.copy(alpha = 0.7f)  // ✅ 新增這行
+                        disabledContentColor = Color.White.copy(alpha = 0.7f)
                     ),
                     modifier = Modifier.height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     enabled = !isNavigating
                 ) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = null, tint = Color.White)  // ✅ 加 tint
+                    Icon(Icons.Filled.ArrowBack, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(8.dp))
-                    Text("返回", style = MaterialTheme.typography.titleMedium, color = Color.White)  // ✅ 加 color
+                    Text("返回", style = MaterialTheme.typography.titleMedium, color = Color.White)
                 }
 
                 Text(
@@ -218,13 +221,11 @@ fun FreePlayScreenContent(
                                 isSelected = selectedIndex == index,
                                 onClick = {
                                     if (selectedIndex == index) {
-                                        // 點擊已選中項目 -> 進入互動
                                         if (!isNavigating) {
                                             isNavigating = true
                                             item.onNavigate()
                                         }
                                     } else {
-                                        // 點擊其他項目 -> 展開
                                         soundManager.playSFX("options2")
                                         selectedIndex = index
                                     }
@@ -322,9 +323,12 @@ fun ExpandedContent(item: TaikoMenuItem) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text(
-            text = item.icon,
-            fontSize = 80.sp
+        // ✅ 使用圖片取代 emoji
+        Image(
+            painter = painterResource(id = item.iconResId),
+            contentDescription = item.categoryName,
+            modifier = Modifier.size(100.dp),
+            contentScale = ContentScale.Fit
         )
 
         Column(
@@ -362,10 +366,12 @@ fun CollapsedContent(item: TaikoMenuItem) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = item.icon,
-            fontSize = 48.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
+        // ✅ 使用圖片取代 emoji
+        Image(
+            painter = painterResource(id = item.iconResId),
+            contentDescription = item.categoryName,
+            modifier = Modifier.size(60.dp).padding(bottom = 16.dp),
+            contentScale = ContentScale.Fit
         )
 
         item.categoryName.forEach { char ->

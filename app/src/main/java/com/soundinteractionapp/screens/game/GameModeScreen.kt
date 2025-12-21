@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +24,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
@@ -42,7 +45,7 @@ import com.soundinteractionapp.screens.game.levels.RankingDialogContent
 data class GameMenuItem(
     val id: Int,
     val categoryName: String,
-    val icon: String,
+    val iconResId: Int,  // ✅ 改為圖片資源 ID
     val primaryColor: Color,
     val secondaryColor: Color,
     val description: String,
@@ -82,7 +85,7 @@ fun GameModeScreenContent(
             GameMenuItem(
                 id = 1,
                 categoryName = "料理鼠王",
-                icon = "✋",
+                iconResId = R.drawable.prairie_dog3,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFFFF7043),
                 secondaryColor = Color(0xFFFFAB91),
                 description = "聽節奏，打老鼠",
@@ -91,7 +94,7 @@ fun GameModeScreenContent(
             GameMenuItem(
                 id = 2,
                 categoryName = "鋼琴演奏",
-                icon = "🐾",
+                iconResId = R.drawable.mode3_icon2,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFF42A5F5),
                 secondaryColor = Color(0xFF90CAF9),
                 description = "利用鋼琴創造舞台",
@@ -100,7 +103,7 @@ fun GameModeScreenContent(
             GameMenuItem(
                 id = 3,
                 categoryName = "聲控飛行",
-                icon = "🐦",
+                iconResId = R.drawable.mode3_icon3,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFF66BB6A),
                 secondaryColor = Color(0xFFA5D6A7),
                 description = "利用聲音控制鳥兒",
@@ -109,7 +112,7 @@ fun GameModeScreenContent(
             GameMenuItem(
                 id = 4,
                 categoryName = "音樂節奏",
-                icon = "🎵",
+                iconResId = R.drawable.mode3_icon4,  // ✅ 使用圖片資源
                 primaryColor = Color(0xFFAB47BC),
                 secondaryColor = Color(0xFFCE93D8),
                 description = "隨著音樂一起消散吧",
@@ -143,9 +146,9 @@ fun GameModeScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFE65100),
-                        contentColor = Color.White,  // ✅ 新增這行
+                        contentColor = Color.White,
                         disabledContainerColor = Color(0xFFE65100).copy(alpha = 0.7f),
-                        disabledContentColor = Color.White.copy(alpha = 0.7f)  // ✅ 新增這行
+                        disabledContentColor = Color.White.copy(alpha = 0.7f)
                     ),
                     modifier = Modifier
                         .height(50.dp)
@@ -153,9 +156,9 @@ fun GameModeScreenContent(
                     shape = RoundedCornerShape(12.dp),
                     enabled = !isNavigating
                 ) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = null, tint = Color.White)  // ✅ 加 tint
+                    Icon(Icons.Filled.ArrowBack, contentDescription = null, tint = Color.White)
                     Spacer(Modifier.width(8.dp))
-                    Text("返回", style = MaterialTheme.typography.titleMedium, color = Color.White)  // ✅ 加 color
+                    Text("返回", style = MaterialTheme.typography.titleMedium, color = Color.White)
                 }
 
                 // 中央標題
@@ -214,14 +217,12 @@ fun GameModeScreenContent(
                                 isSelected = selectedIndex == index,
                                 onClick = {
                                     if (selectedIndex == index) {
-                                        // 點擊已選中項目 -> 進入關卡
                                         if (!isNavigating) {
                                             isNavigating = true
                                             soundManager.playSFX("options2")
                                             onNavigateToLevel(item.route)
                                         }
                                     } else {
-                                        // 點擊其他項目 -> 展開
                                         soundManager.playSFX("options2")
                                         selectedIndex = index
                                     }
@@ -329,9 +330,12 @@ fun GameExpandedContent(item: GameMenuItem) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text(
-            text = item.icon,
-            fontSize = 64.sp
+        // ✅ 使用圖片取代 emoji
+        Image(
+            painter = painterResource(id = item.iconResId),
+            contentDescription = item.categoryName,
+            modifier = Modifier.size(80.dp),
+            contentScale = ContentScale.Fit
         )
 
         Column(
@@ -379,10 +383,12 @@ fun GameCollapsedContent(item: GameMenuItem) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = item.icon,
-            fontSize = 48.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
+        // ✅ 使用圖片取代 emoji
+        Image(
+            painter = painterResource(id = item.iconResId),
+            contentDescription = item.categoryName,
+            modifier = Modifier.size(60.dp).padding(bottom = 16.dp),
+            contentScale = ContentScale.Fit
         )
 
         item.categoryName.forEach { char ->
