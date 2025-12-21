@@ -22,6 +22,7 @@ data class UserProfile(
     val account: String = "",
     val displayName: String = "使用者",
     val photoUrl: String = "", // ✅ 儲存 Resource ID 的字串
+    val hasCustomAvatar: Boolean = false,  // ✅ 新增：是否主動更換過頭像
     val bio: String = "",
     val createdAt: String = "",
     val updatedAt: String = "",
@@ -58,6 +59,7 @@ class ProfileViewModel : ViewModel() {
                     account = "",
                     displayName = "訪客",
                     photoUrl = "",
+                    hasCustomAvatar = false,  // ✅ 新增
                     bio = "",
                     createdAt = formatDate(System.currentTimeMillis()),
                     updatedAt = formatDate(System.currentTimeMillis()),
@@ -84,6 +86,7 @@ class ProfileViewModel : ViewModel() {
                             account = doc.getString("account") ?: "",
                             displayName = doc.getString("displayName") ?: "使用者",
                             photoUrl = doc.getString("photoUrl") ?: "",
+                            hasCustomAvatar = doc.getBoolean("hasCustomAvatar") ?: false,  // ✅ 從 Firebase 讀取
                             bio = doc.getString("bio") ?: "",
                             createdAt = createdAtString,
                             updatedAt = updatedAtString,
@@ -97,6 +100,7 @@ class ProfileViewModel : ViewModel() {
                             account = "",
                             displayName = "使用者",
                             photoUrl = "",
+                            hasCustomAvatar = false,  // ✅ 新增
                             bio = "",
                             createdAt = formatDate(System.currentTimeMillis()),
                             updatedAt = formatDate(System.currentTimeMillis()),
@@ -110,6 +114,7 @@ class ProfileViewModel : ViewModel() {
                         account = "",
                         displayName = "使用者",
                         photoUrl = "",
+                        hasCustomAvatar = false,  // ✅ 新增
                         bio = "",
                         createdAt = formatDate(System.currentTimeMillis()),
                         updatedAt = formatDate(System.currentTimeMillis()),
@@ -129,11 +134,12 @@ class ProfileViewModel : ViewModel() {
             try {
                 val user = auth.currentUser ?: return@launch
 
-                // ✅ 儲存頭像 Resource ID 到 Firestore
+                // ✅ 儲存頭像 Resource ID 和標記到 Firestore
                 firestore.collection("users").document(user.uid)
                     .update(
                         mapOf(
                             "photoUrl" to avatarResIdString,
+                            "hasCustomAvatar" to true,  // ✅ 標記為已主動更換頭像
                             "updatedAt" to FieldValue.serverTimestamp()
                         )
                     )
@@ -142,10 +148,11 @@ class ProfileViewModel : ViewModel() {
                 // ✅ 更新本地狀態
                 _userProfile.value = _userProfile.value.copy(
                     photoUrl = avatarResIdString,
+                    hasCustomAvatar = true,  // ✅ 更新標記
                     updatedAt = formatDate(System.currentTimeMillis())
                 )
 
-                println("✅ [更新頭像] 成功: Resource ID = $avatarResIdString")
+                println("✅ [更新頭像] 成功: Resource ID = $avatarResIdString, hasCustomAvatar = true")
             } catch (e: Exception) {
                 e.printStackTrace()
                 println("❌ [更新頭像] 失敗: ${e.message}")

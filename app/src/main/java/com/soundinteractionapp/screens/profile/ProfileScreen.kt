@@ -55,17 +55,17 @@ fun ProfileScreen(
     val achievements by achievementViewModel.achievements.collectAsState()
     val isLoadingAchievements by achievementViewModel.isLoading.collectAsState()
 
-    // ✅ 載入成就（當頭像或分數變化時）
-    LaunchedEffect(userProfile.photoUrl) {
-        achievementViewModel.loadAchievements(rankingViewModel, userProfile.photoUrl.isNotEmpty())
+// ✅ 修改：監聽 hasCustomAvatar 而不是 photoUrl
+    LaunchedEffect(userProfile.hasCustomAvatar) {
+        achievementViewModel.loadAchievements(rankingViewModel, userProfile.hasCustomAvatar)
     }
 
-    // ✅ 監聽分數變化，自動刷新成就
+// ✅ 監聽分數變化，自動刷新成就
     val scores by rankingViewModel.scores.collectAsState()
     LaunchedEffect(scores) {
         achievementViewModel.refreshAchievements(
             rankingViewModel = rankingViewModel,
-            hasAvatar = userProfile.photoUrl.isNotEmpty()
+            hasAvatar = userProfile.hasCustomAvatar  // ✅ 改用 hasCustomAvatar
         )
     }
 
@@ -445,7 +445,7 @@ private fun ProfileDialogs(
                 // ✅ 更新頭像後刷新成就
                 achievementViewModel.refreshAchievements(
                     rankingViewModel = rankingViewModel,
-                    hasAvatar = true
+                    hasAvatar = true  // ✅ 用戶主動更換了頭像
                 )
 
                 onDismissAvatarPicker()
