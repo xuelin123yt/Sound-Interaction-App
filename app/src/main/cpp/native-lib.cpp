@@ -29,9 +29,19 @@ const int MAX_HP = 100;
 bool isGameOver = false;
 bool isVictory = false;
 
-// 音量觸發跳躍設定
-const float VOLUME_THRESHOLD = 200.0f;
+// ✅ 改進的音量觸發跳躍設定
+const float BASE_VOLUME_THRESHOLD = 800.0f;  // 基礎閾值
+float dynamicThreshold = BASE_VOLUME_THRESHOLD;  // 動態閾值（會自動調整）
 int flapCooldown = 0;
+int loudFrameCount = 0;                 // 連續大聲的幀數
+const int MIN_LOUD_FRAMES = 4;          // 至少要連續 4 幀才觸發（加強過濾）
+int sfxMuteFrames = 0;                  // 音效播放期間靜音的幀數
+
+// ✅ 背景噪音自動校準
+float backgroundNoiseLevel = 0.0f;      // 背景噪音水平
+int noiseCalibrationFrames = 0;         // 校準計數器
+const int CALIBRATION_FRAMES = 30;      // 前 30 幀用於校準
+const float NOISE_MULTIPLIER = 2.5f;    // 閾值必須超過背景噪音的 2.5 倍
 
 // --- 結構體定義 ---
 struct Obstacle {
@@ -57,6 +67,13 @@ Java_com_soundinteractionapp_GameEngine_initGame(JNIEnv* env, jobject) {
     isGameOver = false;
     isVictory = false;
     flapCooldown = 0;
+    loudFrameCount = 0;  // ✅ 重置音訊計數
+    sfxMuteFrames = 0;   // ✅ 重置音效靜音計數
+
+    // ✅ 重置背景噪音校準
+    backgroundNoiseLevel = 0.0f;
+    noiseCalibrationFrames = 0;
+    dynamicThreshold = BASE_VOLUME_THRESHOLD;
 
     obstacles.clear();
 
@@ -89,6 +106,7 @@ Java_com_soundinteractionapp_GameEngine_updateGame(JNIEnv* env, jobject) {
     if (birdY > FLOOR_Y) birdY = FLOOR_Y;
     if (birdY < 0.0f) { birdY = 0.0f; birdVelocity = 0; }
     if (flapCooldown > 0) flapCooldown--;
+    if (sfxMuteFrames > 0) sfxMuteFrames--;  // ✅ 減少音效靜音計數
 
     // --- B. 碰撞檢測與全域位移計算 ---
     bool isBlocked = false;        // 是否被擋住 (決定是否停止捲動)
@@ -114,6 +132,7 @@ Java_com_soundinteractionapp_GameEngine_updateGame(JNIEnv* env, jobject) {
                 if (!obs.hasCollided) {
                     currentHp -= 5;
                     obs.hasCollided = true;
+                    sfxMuteFrames = 20;  // ✅ 碰撞音效播放，靜音 20 幀（約 0.3-0.4 秒）
                     if (currentHp <= 0) {
                         currentHp = 0;
                         isGameOver = true;
@@ -195,6 +214,7 @@ Java_com_soundinteractionapp_GameEngine_updateGame(JNIEnv* env, jobject) {
         if (!obs.passed && obs.x + COLLISION_PIPE_WIDTH < BIRD_X - BIRD_RADIUS) {
             score += 100;
             obs.passed = true;
+            sfxMuteFrames = 20;  // ✅ 加分音效播放，靜音 20 幀
         }
     }
 
@@ -256,7 +276,7 @@ Java_com_soundinteractionapp_GameEngine_getObstacleData(JNIEnv* env, jobject) {
     return result;
 }
 
-// 6. 音訊處理
+// 6. ✅ 改進的音訊處理 - 過濾環境噪音、遊戲音效、背景音樂
 extern "C" JNIEXPORT void JNICALL
 Java_com_soundinteractionapp_GameEngine_processAudio(JNIEnv* env, jobject, jshortArray audioData, jint size) {
     jshort* audioPtr = env->GetShortArrayElements(audioData, nullptr);
@@ -266,13 +286,54 @@ Java_com_soundinteractionapp_GameEngine_processAudio(JNIEnv* env, jobject, jshor
     }
     float rms = sqrt(sum / size);
 
-    if (rms > VOLUME_THRESHOLD) {
-        if (flapCooldown == 0 && !isGameOver) {
-            birdVelocity = LIFT;
-            flapCooldown = 8;
+    // ★★★ 背景噪音自動校準（遊戲開始前 30 幀） ★★★
+    if (noiseCalibrationFrames < CALIBRATION_FRAMES) {
+        // 收集前 30 幀的平均音量作為背景噪音基準
+        backgroundNoiseLevel += rms;
+        noiseCalibrationFrames++;
+
+        if (noiseCalibrationFrames == CALIBRATION_FRAMES) {
+            // 計算平均背景噪音
+            backgroundNoiseLevel /= CALIBRATION_FRAMES;
+            // 設定動態閾值 = 背景噪音 × 倍數，但不低於基礎閾值
+            dynamicThreshold = fmax(backgroundNoiseLevel * NOISE_MULTIPLIER, BASE_VOLUME_THRESHOLD);
+            LOGD("背景噪音校準完成: %.2f, 動態閾值: %.2f", backgroundNoiseLevel, dynamicThreshold);
         }
+
+        env->ReleaseShortArrayElements(audioData, audioPtr, 0);
+        return;
     }
+
+    // ★★★ 改進的觸發邏輯 ★★★
+    // 1. 使用動態閾值（自動適應背景音樂音量）
+    // 2. 需要連續 4 幀都超過閾值才觸發（強力過濾背景噪音）
+    // 3. 增加冷卻時間 (15 幀，避免連續誤觸發)
+    // 4. 音效播放期間忽略麥克風輸入（避免遊戲音效觸發）
+
+    // 音效播放期間不處理麥克風輸入
+    if (sfxMuteFrames > 0) {
+        loudFrameCount = 0;  // 重置計數
+        env->ReleaseShortArrayElements(audioData, audioPtr, 0);
+        return;
+    }
+
+    if (rms > dynamicThreshold) {
+        loudFrameCount++;
+        // 連續達到最小幀數且冷卻完成才觸發
+        if (loudFrameCount >= MIN_LOUD_FRAMES && flapCooldown == 0 && !isGameOver) {
+            birdVelocity = LIFT;
+            flapCooldown = 15;  // 增加冷卻時間到 15 幀
+            loudFrameCount = 0;
+        }
+    } else {
+        // 音量低於閾值就重置計數
+        loudFrameCount = 0;
+    }
+
     env->ReleaseShortArrayElements(audioData, audioPtr, 0);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_soundinteractionapp_GameEngine_sendPitchData(JNIEnv* env, jobject, jfloat) {}
+extern "C" JNIEXPORT void JNICALL
+Java_com_soundinteractionapp_GameEngine_sendPitchData(JNIEnv* env, jobject, jfloat pitch) {
+    // 空函數，保留供未來使用
+}

@@ -328,7 +328,62 @@ fun Level3PitchScreen(
 
         if (showStartHint) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "對著麥克風發出聲音!", fontSize = 40.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = GameFont, style = TextStyle(shadow = Shadow(color = Color.Black, offset = Offset(4f, 4f), blurRadius = 8f)))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    // 主要提示
+                    Text(
+                        text = "對著麥克風發出聲音!",
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontFamily = GameFont,
+                        style = TextStyle(
+                            shadow = Shadow(
+                                color = Color.Black,
+                                offset = Offset(4f, 4f),
+                                blurRadius = 8f
+                            )
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // 耳機建議提示卡片
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFF9800).copy(alpha = 0.3f)
+                        ),
+                        border = BorderStroke(2.dp, Color(0xFFFF9800)),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🎧", fontSize = 32.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    "建議配戴耳機",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFFB74D),
+                                    fontFamily = GameFont
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "避免背景音樂干擾，體驗效果更好！",
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    fontFamily = GameFont
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
