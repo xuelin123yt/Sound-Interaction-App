@@ -33,6 +33,14 @@ import com.soundinteractionapp.utils.VolumeKeys
 fun PianoInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
     var isNavigating by remember { mutableStateOf(false) }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     val pianoNotes = remember {
         listOf(
             R.raw.piano_c1, R.raw.piano_d1, R.raw.piano_e1, R.raw.piano_f1,

@@ -352,6 +352,47 @@ class SoundManager(
         bgmPlayer = null
     }
 
+    /**
+     * ✅ 暂停 BGM（进入互动画面时使用）
+     */
+    fun pauseBGM() {
+        bgmPlayer?.let { player ->
+            try {
+                if (player.isPlaying) {
+                    bgmPausePosition = player.currentPosition
+                    wasBgmPlayingBeforePause = true
+                    player.pause()
+                    android.util.Log.d("SoundManager", "🎵 BGM paused at ${bgmPausePosition}ms")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SoundManager", "❌ Failed to pause BGM", e)
+            }
+        }
+    }
+
+    /**
+     * ✅ 恢复 BGM（离开互动画面时使用）
+     */
+    fun resumeBGM() {
+        if (wasBgmPlayingBeforePause && bgmPlayer != null) {
+            try {
+                bgmPlayer?.apply {
+                    seekTo(bgmPausePosition)
+                    start()
+                    android.util.Log.d("SoundManager", "🎵 BGM resumed from ${bgmPausePosition}ms")
+                }
+                wasBgmPlayingBeforePause = false
+            } catch (e: Exception) {
+                android.util.Log.e("SoundManager", "❌ Failed to resume BGM", e)
+                // 如果恢复失败，尝试重新播放
+                currentBgmResId?.let { resId ->
+                    stopBgm()
+                    playBgm(resId)
+                }
+            }
+        }
+    }
+
     fun pauseAllAudio() {
         bgmPlayer?.let { player ->
             try {

@@ -41,6 +41,14 @@ data class DogAsset(
 fun DogInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
     var isNavigating by remember { mutableStateOf(false) }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     val farDogSize = 130.dp
     val nearDogSize = 180.dp
     val farDogTopOffset = 180.dp

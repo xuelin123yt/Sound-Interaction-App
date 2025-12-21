@@ -77,19 +77,19 @@ enum class Difficulty(
     EASY(
         "簡單模式", 0.6f, Color(0xFF4CAF50), 11, R.raw.canon, 97000L,
         Level1Charts.LEVEL1_NORMAL_CHART,
-        "卡農:適合初學者練習節奏感",
+        "卡農：適合初學者練習節奏感",
         R.drawable.bg_level1_easy, R.drawable.bg_level1_easy, 30000, 20
     ),
     NORMAL(
         "普通模式", 0.9f, Color(0xFF2196F3), 12, R.raw.fur_elise, 77000L,
         Level1Charts.LEVEL1_EASY_CHART,
-        "獻給愛麗絲:挑戰更快的打擊反應",
+        "獻給愛麗絲：挑戰打擊反應",
         R.drawable.bg_level1_normal, R.drawable.bg_level1_normal, 15000, 40
     ),
     HARD(
         "困難模式", 1.2f, Color(0xFFE53935), 13, R.raw.rondo_alla_turca, 58000L,
         Level1Charts.LEVEL1_HARD_CHART,
-        "土耳其進行曲:極致的手速考驗",
+        "土耳其進行曲：極致手速考驗",
         R.drawable.bg_level1_hard, R.drawable.bg_level1_hard, 20000, 60
     );
 

@@ -46,6 +46,14 @@ data class DrumComponentData(
 fun DrumInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
     var isNavigating by remember { mutableStateOf(false) }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     val drumSounds = remember {
         listOf(
             R.raw.drum_cymbal_closed, R.raw.drum_snare_hard, R.raw.drum_bass_hard,

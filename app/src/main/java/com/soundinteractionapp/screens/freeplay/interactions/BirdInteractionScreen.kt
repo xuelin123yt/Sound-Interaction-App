@@ -39,6 +39,14 @@ data class BirdAsset(
 fun BirdInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
     var isNavigating by remember { mutableStateOf(false) }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     // 設定視覺大小 (遠小近大)
     val farBirdSize = 110.dp
     val nearBirdSize = 180.dp

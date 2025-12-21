@@ -39,6 +39,14 @@ fun BellInteractionScreen(
 ) {
     var isNavigating by remember { mutableStateOf(false) }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     val bellItems = remember {
         listOf(
             BellItem("按鈴", R.drawable.desk_bell, R.raw.desk_bell),

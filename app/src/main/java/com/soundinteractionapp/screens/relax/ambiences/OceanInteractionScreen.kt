@@ -40,6 +40,14 @@ fun OceanInteractionScreen(
         listOf(R.raw.oceanbackground1, R.raw.oceanbackground2, R.raw.oceanbackground3)
     }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     // ✅ 取得音量設定
     val oceanVolume = remember {
         derivedStateOf {

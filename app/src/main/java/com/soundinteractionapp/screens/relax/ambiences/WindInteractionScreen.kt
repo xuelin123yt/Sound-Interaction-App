@@ -44,6 +44,14 @@ fun WindInteractionScreen(
         )
     }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     // ✅ 取得音量設定
     val windVolume = remember {
         derivedStateOf {

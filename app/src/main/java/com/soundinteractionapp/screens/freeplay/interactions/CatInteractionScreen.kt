@@ -45,6 +45,14 @@ data class CatAsset(
 fun CatInteractionScreen(onNavigateBack: () -> Unit, soundManager: SoundManager) {
     var isNavigating by remember { mutableStateOf(false) }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     val farCatTopOffset = 180.dp
     val nearCatBottomOffset = -10.dp
     val farCatSize = 120.dp

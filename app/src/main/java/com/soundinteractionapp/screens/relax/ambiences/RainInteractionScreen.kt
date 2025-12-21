@@ -52,6 +52,14 @@ fun RainInteractionScreen(
         }
     }
 
+    // ✅ 进入时暂停 BGM，离开时恢复
+    DisposableEffect(Unit) {
+        soundManager.pauseBGM()
+        onDispose {
+            soundManager.resumeBGM()
+        }
+    }
+
     val audioPlayer = remember {
         try {
             MediaPlayer.create(context, R.raw.rain_sound)?.apply {
