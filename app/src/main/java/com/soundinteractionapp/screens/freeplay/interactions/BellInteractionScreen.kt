@@ -148,7 +148,7 @@ fun RowScope.BellImageButton(
         Text(
             text = label,
             fontSize = 20.sp,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = Color.Black,  // ✅ 強制黑色
             style = MaterialTheme.typography.titleMedium
         )
     }
