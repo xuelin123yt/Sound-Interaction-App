@@ -143,7 +143,9 @@ fun GameModeScreenContent(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFE65100),
-                        disabledContainerColor = Color(0xFFE65100).copy(alpha = 0.7f)
+                        contentColor = Color.White,  // ✅ 新增這行
+                        disabledContainerColor = Color(0xFFE65100).copy(alpha = 0.7f),
+                        disabledContentColor = Color.White.copy(alpha = 0.7f)  // ✅ 新增這行
                     ),
                     modifier = Modifier
                         .height(50.dp)
@@ -151,9 +153,9 @@ fun GameModeScreenContent(
                     shape = RoundedCornerShape(12.dp),
                     enabled = !isNavigating
                 ) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = null, tint = Color.White)  // ✅ 加 tint
                     Spacer(Modifier.width(8.dp))
-                    Text("返回", style = MaterialTheme.typography.titleMedium)
+                    Text("返回", style = MaterialTheme.typography.titleMedium, color = Color.White)  // ✅ 加 color
                 }
 
                 // 中央標題
