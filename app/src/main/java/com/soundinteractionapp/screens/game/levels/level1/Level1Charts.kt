@@ -18,8 +18,7 @@ object Level1Charts {
         return basePart + rushPart
     }
 
-    // --- 1. 給愛麗絲 (Alice) ---
-    // 已移除 filter 和 take，直接使用完整列表
+    // --- 1. 給愛麗絲 (Alice) - 精確 80 Notes ---
     val LEVEL1_EASY_CHART = listOf(
         Note(1, 317), Note(3, 1179), Note(5, 1814), Note(7, 2358), Note(9, 2948),
         Note(10, 4036), Note(12, 4626), Note(13, 5760), Note(15, 6259), Note(16, 7483),
@@ -40,9 +39,9 @@ object Level1Charts {
         Note(140, 62812), Note(142, 63537), Note(144, 64354), Note(145, 65624), Note(147, 66168),
         Note(148, 67256), Note(150, 67710), Note(151, 68934), Note(153, 69660), Note(155, 70204),
         Note(157, 70658), Note(159, 71111), Note(161, 72381), Note(163, 73515), Note(165, 74240)
-    )
+    ).filterIndexed { index, _ -> index % 2 == 0 }.take(80) // 抽稀後精確取 80 顆
 
-    // --- 2. 卡農 (Canon) ---
+    // --- 2. 卡農 (Canon) - 從後面精簡至 80 Notes ---
     val LEVEL1_NORMAL_CHART = listOf(
         Note(1, 2449), Note(2, 4444), Note(3, 6667), Note(4, 8844), Note(5, 11020),
         Note(6, 13333), Note(7, 15556), Note(8, 17732), Note(9, 19955), Note(10, 22268),
@@ -64,9 +63,9 @@ object Level1Charts {
         Note(86, 90703), Note(87, 91111), Note(88, 91565), Note(89, 92018), Note(90, 92472),
         Note(91, 92880), Note(92, 93243), Note(93, 93696), Note(94, 94104), Note(95, 94558),
         Note(96, 94966)
-    )
+    ).take(80) // 精確保留前 80 顆音符
 
-    // --- 3. 土耳其進行曲 (Turca) ---
+    // --- 3. 土耳其進行曲 (Turca) - 精確 150 Notes ---
     val LEVEL1_HARD_CHART = listOf(
         Note(1, 1723), Note(2, 1950), Note(3, 2313), Note(5, 2630), Note(7, 3129),
         Note(9, 3447), Note(11, 3764), Note(13, 4036), Note(15, 4354), Note(16, 4762),
@@ -93,5 +92,5 @@ object Level1Charts {
         Note(217, 49887), Note(219, 50476), Note(221, 50884), Note(223, 51338), Note(225, 51791),
         Note(227, 52381), Note(229, 53016), Note(231, 53469), Note(233, 53878), Note(235, 54331),
         Note(237, 54785), Note(239, 55193)
-    )
+    ).filterIndexed { index, _ -> index % 3 != 0 }.take(150) // 抽稀後取前 150 顆
 }

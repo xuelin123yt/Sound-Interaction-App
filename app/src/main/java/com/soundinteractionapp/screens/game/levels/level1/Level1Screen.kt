@@ -41,6 +41,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.google.firebase.auth.FirebaseAuth
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
@@ -147,6 +152,16 @@ fun Level1FollowBeatScreen(
         label = "rush"
     )
 
+    // ✅ 添加衝刺火焰特效動畫
+    val sprintFireComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.sprint_fire))
+    var isSprintActive by remember { mutableStateOf(false) }
+    val sprintFireProgress by animateLottieCompositionAsState(
+        composition = sprintFireComposition,
+        isPlaying = isSprintActive,
+        restartOnPlay = false,
+        iterations = LottieConstants.IterateForever
+    )
+
     // 音效管理
     var previewPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var optionsSoundPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
@@ -203,6 +218,20 @@ fun Level1FollowBeatScreen(
                 previewPlayer = p
             } catch (e: Exception) {}
             previousSelectedIndex = selectedIndex
+        }
+    }
+
+    // ✅ 監聽 combo 變化來控制火焰特效
+    LaunchedEffect(combo, gameState) {
+        if (gameState == GameState.PLAYING) {
+            val wasSprintActive = isSprintActive
+            isSprintActive = combo >= selectedDifficulty.rushThreshold
+
+            if (!wasSprintActive && isSprintActive) {
+                Log.d("Level1Sprint", "🔥 進入衝刺模式! Combo: $combo")
+            }
+        } else {
+            isSprintActive = false
         }
     }
 
@@ -397,6 +426,21 @@ fun Level1FollowBeatScreen(
             alpha = 0.35f
         )
 
+        // ✅ 衝刺火焰特效層
+        if (gameState == GameState.PLAYING && isSprintActive) {
+            LottieAnimation(
+                composition = sprintFireComposition,
+                progress = { sprintFireProgress },
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        translationY = size.height * 0.28f
+                    }
+                    .alpha(0.3f)
+            )
+        }
+
         if (gameState == GameState.SELECTION) {
             Row(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.weight(0.45f).fillMaxHeight()) {
@@ -461,6 +505,27 @@ fun Level1FollowBeatScreen(
         if (gameState == GameState.PLAYING) {
             if (penaltyFlashAlpha.value > 0f) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Red.copy(alpha = penaltyFlashAlpha.value)))
+            }
+
+            // ✅ 新增：左上角退出按鈕
+            Button(
+                onClick = {
+                    if (isNavigating) return@Button
+                    isNavigating = true
+                    soundManager.stopMusic()
+                    soundManager.playSFX("cancel")
+                    onNavigateBack()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red.copy(0.7f),
+                    disabledContainerColor = Color.Red.copy(0.5f)
+                ),
+                enabled = !isNavigating,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+            ) {
+                Text("退出")
             }
 
             Box(Modifier.fillMaxSize().padding(16.dp)) {
@@ -581,7 +646,8 @@ fun Level1FollowBeatScreen(
                     }
                 },
                 isNavigating,
-                rankingViewModel
+                rankingViewModel,
+                soundManager
             )
         }
     }
@@ -601,17 +667,33 @@ fun GameResultContent(
     onSelectDifficulty: () -> Unit,
     onExit: () -> Unit,
     isNavigating: Boolean,
-    rankingViewModel: RankingViewModel = viewModel()
+    rankingViewModel: RankingViewModel = viewModel(),
+    soundManager: SoundManager // ✅ 新增參數
 ) {
     val rank = GameScoreUtils.calculateRank(score, maxScore)
     val rankColor = GameScoreUtils.getRankColor(rank)
+
+    // ✅ 添加 Lottie 動畫
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.confetti))
+    var playAnimation by remember { mutableStateOf(false) }
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        isPlaying = playAnimation,
+        restartOnPlay = true,
+        iterations = 1
+    )
 
     // ✅ 用於追蹤「首次解鎖」的成就
     var newlyUnlockedAchievements by remember { mutableStateOf<List<String>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ 遊戲結束時檢查成就
+    // ✅ 遊戲結束時檢查成就並播放音效+動畫
     LaunchedEffect(Unit) {
+        // 播放煙火音效
+        soundManager.playSFX("fireworks")
+        // 觸發動畫
+        playAnimation = true
+
         coroutineScope.launch {
             // 延遲確保分數已同步
             kotlinx.coroutines.delay(500)
@@ -721,7 +803,6 @@ fun GameResultContent(
                             }
                         }
 
-                        // ✅ 如果不是最後一個成就，添加間距
                         if (achievementName != newlyUnlockedAchievements.last()) {
                             Spacer(modifier = Modifier.height(8.dp))
                         }
@@ -760,6 +841,14 @@ fun GameResultContent(
                 }
             }
         }
+
+        // ✅ 煙火動畫覆蓋層
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 

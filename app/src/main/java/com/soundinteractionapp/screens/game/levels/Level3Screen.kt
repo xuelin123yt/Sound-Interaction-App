@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.TextStyle
@@ -56,6 +57,10 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -121,6 +126,18 @@ fun Level3PitchScreen(
     val GameFont = FontFamily(Font(R.font.huninn))
     val scoreScale = remember { Animatable(1f) }
 
+    // ✅ 添加 Lottie 動畫 - 使用 isPlaying 參數控制
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.confetti))
+
+    // ✅ 關鍵修正:使用 isGameOver 觸發動畫
+    var playAnimation by remember { mutableStateOf(false) }
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        isPlaying = playAnimation,  // ✅ 改用狀態控制
+        restartOnPlay = true,        // ✅ 每次播放都重新開始
+        iterations = 1
+    )
+
     LaunchedEffect(score) {
         if (score > 0) {
             scoreScale.snapTo(1f)
@@ -133,6 +150,10 @@ fun Level3PitchScreen(
         if (isGameOver) {
             rankingViewModel.onGameFinished(levelId = 3, finalScore = score)
             soundManager.stopMusic()
+            // ✅ 播放煙火音效
+            soundManager.playSFX("fireworks")
+            // ✅ 觸發動畫播放
+            playAnimation = true
         }
     }
 
@@ -220,7 +241,6 @@ fun Level3PitchScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         VideoBackground(videoResId = R.raw.sky)
 
-        // ✅ 強化版 Canvas 繪製水管
         Canvas(modifier = Modifier.fillMaxSize()) {
             val scaleFactor = size.height / 2000f
 
@@ -231,12 +251,11 @@ fun Level3PitchScreen(
                 val borderColor = Color(0xFF2F4F2F)
                 val highlightLineColor = Color.White.copy(alpha = 0.4f)
 
-                // 經典 3D 圓柱漸層
                 val pipeBrush = Brush.horizontalGradient(
                     0.0f to Color(0xFF437027),
                     0.2f to Color(0xFF73BF2E),
                     0.4f to Color(0xFF96E668),
-                    0.5f to Color(0xFFFFFFFF), // 正中央高亮
+                    0.5f to Color(0xFFFFFFFF),
                     0.7f to Color(0xFF73BF2E),
                     1.0f to Color(0xFF558022)
                 )
@@ -247,44 +266,30 @@ fun Level3PitchScreen(
                         val gapY = obstacles[i+1]
                         val gapHeight = obstacles[i+2]
 
-                        // --- 上半部水管 ---
                         val topPipeBottom = gapY - gapHeight / 2
                         if (topPipeBottom > 0) {
-                            // 管身
                             drawRect(brush = pipeBrush, topLeft = Offset(pipeX, 0f), size = Size(pipeWidth, topPipeBottom - rimHeight))
                             drawRect(color = borderColor, topLeft = Offset(pipeX, 0f), size = Size(pipeWidth, topPipeBottom - rimHeight), style = Stroke(width = 8f))
-                            // 管身高光線
                             drawLine(color = highlightLineColor, start = Offset(pipeX + 35f, 0f), end = Offset(pipeX + 35f, topPipeBottom - rimHeight), strokeWidth = 12f)
-
-                            // 水管口 (Rim)
                             drawRect(brush = pipeBrush, topLeft = Offset(pipeX - rimOverhang, topPipeBottom - rimHeight), size = Size(pipeWidth + rimOverhang * 2, rimHeight))
                             drawRect(color = borderColor, topLeft = Offset(pipeX - rimOverhang, topPipeBottom - rimHeight), size = Size(pipeWidth + rimOverhang * 2, rimHeight), style = Stroke(width = 8f))
-                            // 水管口底部陰影
                             drawRect(color = Color.Black.copy(alpha = 0.3f), topLeft = Offset(pipeX - rimOverhang, topPipeBottom - 15f), size = Size(pipeWidth + rimOverhang * 2, 10f))
                         }
 
-                        // --- 下半部水管 ---
                         val bottomPipeTop = gapY + gapHeight / 2
-                        // 管身
                         drawRect(brush = pipeBrush, topLeft = Offset(pipeX, bottomPipeTop + rimHeight), size = Size(pipeWidth, 2000f - (bottomPipeTop + rimHeight)))
                         drawRect(color = borderColor, topLeft = Offset(pipeX, bottomPipeTop + rimHeight), size = Size(pipeWidth, 2000f - (bottomPipeTop + rimHeight)), style = Stroke(width = 8f))
-                        // 管身高光線
                         drawLine(color = highlightLineColor, start = Offset(pipeX + 35f, bottomPipeTop + rimHeight), end = Offset(pipeX + 35f, 2000f), strokeWidth = 12f)
-
-                        // 水管口 (Rim)
                         drawRect(brush = pipeBrush, topLeft = Offset(pipeX - rimOverhang, bottomPipeTop), size = Size(pipeWidth + rimOverhang * 2, rimHeight))
                         drawRect(color = borderColor, topLeft = Offset(pipeX - rimOverhang, bottomPipeTop), size = Size(pipeWidth + rimOverhang * 2, rimHeight), style = Stroke(width = 8f))
-                        // 水管口頂部陰影
                         drawRect(color = Color.Black.copy(alpha = 0.3f), topLeft = Offset(pipeX - rimOverhang, bottomPipeTop + 5f), size = Size(pipeWidth + rimOverhang * 2, 10f))
                     }
                 }
 
-                // 地面
                 drawRect(color = Color(0xFFDED895), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 200f))
                 drawRect(color = Color(0xFF73BF2E), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 30f))
                 drawRect(color = Color(0xFF2F4F2F), topLeft = Offset(0f, 2000f), size = Size(size.width / scaleFactor, 6f))
 
-                // 繪製主角鳥兒
                 val visualBirdSize = 260
                 drawImage(
                     image = birdSprites[currentFrameIndex],
@@ -294,7 +299,6 @@ fun Level3PitchScreen(
             }
         }
 
-        // UI: 分數與血條
         Row(
             modifier = Modifier.fillMaxWidth().padding(24.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -328,7 +332,6 @@ fun Level3PitchScreen(
             }
         }
 
-        // 遊戲結束畫面
         if (isGameOver) {
             Box(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.85f)).clickable(enabled = false) {},
@@ -346,12 +349,10 @@ fun Level3PitchScreen(
                                 val newlyUnlocked = achievementManager.checkAndUnlockAchievements(scoreEntry = currentScores, hasFeedback = false, hasAvatar = false)
                                 val gameRelatedAchievements = mutableListOf<String>()
 
-                                // 成就 3: Voice Flight Ace／聲控飛行高手
                                 if (3 in newlyUnlocked && currentScores.level3Score >= 3000) {
                                     gameRelatedAchievements.add("Voice Flight Ace／聲控飛行高手")
                                 }
 
-                                // 成就 6: Mode Three Completionist／模式三完成者
                                 if (6 in newlyUnlocked) {
                                     gameRelatedAchievements.add("Mode Three Completionist／模式三完成者")
                                 }
@@ -380,7 +381,7 @@ fun Level3PitchScreen(
                                     Text("🏆", fontSize = 19.sp)
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
-                                        Text("成就解鎖！", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
+                                        Text("成就解鎖!", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
                                         Text(achievementName, fontSize = 11.sp, color = Color.White.copy(alpha = 0.8f))
                                     }
                                 }
@@ -404,6 +405,14 @@ fun Level3PitchScreen(
                     }
                 }
             }
+
+            // ✅ 煙火動畫覆蓋層 - 放在遊戲結束畫面外層
+            LottieAnimation(
+                composition = composition,
+                progress = { progress },
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier.fillMaxSize()
+            )
         } else {
             Button(
                 onClick = {

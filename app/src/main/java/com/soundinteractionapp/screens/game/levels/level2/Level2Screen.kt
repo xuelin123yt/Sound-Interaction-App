@@ -40,6 +40,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.google.firebase.auth.FirebaseAuth
 import com.soundinteractionapp.R
 import com.soundinteractionapp.SoundManager
@@ -86,7 +91,6 @@ fun Level2FollowBeatScreen(
     val isGuest = auth.currentUser?.isAnonymous == true
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ 防抖狀態
     var isNavigating by remember { mutableStateOf(false) }
 
     // 核心透視參數
@@ -115,6 +119,16 @@ fun Level2FollowBeatScreen(
     val infiniteTransition = rememberInfiniteTransition(label = "rushAnim")
     val rushTimeOffsetY by infiniteTransition.animateFloat(0f, -8.dp.value, infiniteRepeatable(tween(400, easing = LinearOutSlowInEasing), RepeatMode.Reverse), label = "rush")
 
+    // ✅ 添加衝刺火焰特效動畫
+    val sprintFireComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.sprint_fire))
+    var isSprintActive by remember { mutableStateOf(false) }
+    val sprintFireProgress by animateLottieCompositionAsState(
+        composition = sprintFireComposition,
+        isPlaying = isSprintActive,
+        restartOnPlay = false,
+        iterations = LottieConstants.IterateForever
+    )
+
     // 玩法變數
     val tiles = remember { mutableStateListOf<PianoTilePerspective>() }
     val laneFeedback = remember { mutableStateListOf(LaneFeedbackType.NONE, LaneFeedbackType.NONE, LaneFeedbackType.NONE, LaneFeedbackType.NONE) }
@@ -123,7 +137,7 @@ fun Level2FollowBeatScreen(
 
     val stopPreview = { previewPlayer?.stop(); previewPlayer?.release(); previewPlayer = null }
 
-    // --- 1. 選單列表邏輯 ---
+    // 選單列表邏輯
     val selectedIndex by remember { derivedStateOf {
         val info = listState.layoutInfo
         val center = info.viewportStartOffset + info.viewportSize.height / 2
@@ -150,13 +164,26 @@ fun Level2FollowBeatScreen(
         }
     }
 
-    // ✅ 通知 MainActivity 遊戲狀態變化
+    // ✅ 監聽 combo 變化來控制火焰特效
+    LaunchedEffect(combo, gameState) {
+        if (gameState == Level2GameState.PLAYING) {
+            val wasSprintActive = isSprintActive
+            isSprintActive = combo >= selectedDifficulty.rushThreshold
+
+            if (!wasSprintActive && isSprintActive) {
+                Log.d("Level2Sprint", "🔥 進入衝刺模式! Combo: $combo")
+            }
+        } else {
+            isSprintActive = false
+        }
+    }
+
     LaunchedEffect(gameState) {
         val isPlaying = gameState == Level2GameState.PLAYING
         onGameStateChanged(isPlaying)
     }
 
-    // --- 2. 遊戲流程與紀錄/解鎖邏輯 ---
+    // 遊戲流程與紀錄/解鎖邏輯
     LaunchedEffect(gameState) {
         if (gameState != Level2GameState.SELECTION) stopPreview()
 
@@ -176,7 +203,6 @@ fun Level2FollowBeatScreen(
             while (countdownValue > 0) { delay(1000); countdownValue-- }
             gameState = Level2GameState.PLAYING
 
-            // ✅ 使用 playGameMusic 播放音樂
             soundManager.playGameMusic(selectedDifficulty.audioResId, selectedDifficulty.volumeKey)
         }
 
@@ -200,7 +226,7 @@ fun Level2FollowBeatScreen(
         }
     }
 
-// --- 3. 核心玩法：絕對時間同步 (解決延遲) ---
+    // 核心玩法:絕對時間同步
     LaunchedEffect(gameState) {
         if (gameState == Level2GameState.PLAYING && mediaPlayer != null) {
             val player = mediaPlayer!!
@@ -251,7 +277,6 @@ fun Level2FollowBeatScreen(
         }
     }
 
-    // ✅ 新增：監聽 App 生命週期，處理預覽音樂
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, gameState) {
         val observer = LifecycleEventObserver { _, event ->
@@ -288,7 +313,7 @@ fun Level2FollowBeatScreen(
         }
     }
 
-    // --- 4. UI 渲染 ---
+    // UI 渲染
     Box(Modifier.fillMaxSize().background(Color(0xFF0F172A))) {
         Image(
             painter = painterResource(id = selectedDifficulty.bgResId),
@@ -298,7 +323,21 @@ fun Level2FollowBeatScreen(
             alpha = 0.35f
         )
 
-        // --- 介面 1: 難度選擇 ---
+        // ✅ 衝刺火焰特效層
+        if (gameState == Level2GameState.PLAYING && isSprintActive) {
+            LottieAnimation(
+                composition = sprintFireComposition,
+                progress = { sprintFireProgress },
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        translationY = size.height * 0.28f
+                    }
+                    .alpha(0.3f)
+            )
+        }
+
         if (gameState == Level2GameState.SELECTION) {
             Row(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(0.45f).fillMaxHeight(), Alignment.Center) {
@@ -326,7 +365,6 @@ fun Level2FollowBeatScreen(
                 }
             }
 
-            // ✅ 返回按鈕加入防抖
             IconButton(
                 onClick = {
                     if (isNavigating) return@IconButton
@@ -350,7 +388,6 @@ fun Level2FollowBeatScreen(
             )
         }
 
-        // --- 介面 2: 倒數 ---
         if (gameState == Level2GameState.COUNTDOWN) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(0.6f)), Alignment.Center) {
                 Text(
@@ -362,7 +399,6 @@ fun Level2FollowBeatScreen(
             }
         }
 
-        // --- 介面 3: 遊戲玩法 ---
         if (gameState == Level2GameState.PLAYING) {
             Box(Modifier.fillMaxSize().pointerInput(Unit) {
                 detectTapGestures(onTap = { tapOffset ->
@@ -383,7 +419,6 @@ fun Level2FollowBeatScreen(
                             val isRush = combo >= selectedDifficulty.rushThreshold
                             score += if (isRush) 150 else 100
 
-                            // ✅ 播放打擊音效
                             soundManager.playGameSFX("level2_piano_hit", VolumeKeys.LEVEL2_HIT)
 
                             coroutineScope.launch {
@@ -406,7 +441,6 @@ fun Level2FollowBeatScreen(
                 Level2PianoCanvas(tiles, laneFeedback, horizonRatio)
             }
 
-            // ✅ 右上方資訊層
             Box(Modifier.fillMaxSize().padding(16.dp)) {
                 Column(
                     modifier = Modifier.align(Alignment.TopEnd).padding(top = 10.dp),
@@ -445,7 +479,6 @@ fun Level2FollowBeatScreen(
                 color = selectedDifficulty.color
             )
 
-            // ✅ 退出按鈕加入防抖
             Button(
                 onClick = {
                     if (isNavigating) return@Button
@@ -466,7 +499,6 @@ fun Level2FollowBeatScreen(
             }
         }
 
-        // --- 介面 4: 結算 ---
         if (gameState == Level2GameState.RESULT) {
             Level2ResultContent(
                 score = score,
@@ -484,7 +516,8 @@ fun Level2FollowBeatScreen(
                     onNavigateBack()
                 },
                 isNavigating = isNavigating,
-                rankingViewModel = rankingViewModel
+                rankingViewModel = rankingViewModel,
+                soundManager = soundManager
             )
         }
     }
@@ -618,17 +651,33 @@ fun Level2ResultContent(
     onSelect: () -> Unit,
     onExit: () -> Unit,
     isNavigating: Boolean,
-    rankingViewModel: RankingViewModel = viewModel()
+    rankingViewModel: RankingViewModel = viewModel(),
+    soundManager: SoundManager // ✅ 新增參數
 ) {
     val rank = GameScoreUtils.calculateRank(score, maxScore)
     val rankColor = GameScoreUtils.getRankColor(rank)
 
-    // ✅ 新增：用於追蹤「首次解鎖」的成就
+    // ✅ 添加 Lottie 動畫
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.confetti))
+    var playAnimation by remember { mutableStateOf(false) }
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        isPlaying = playAnimation,
+        restartOnPlay = true,
+        iterations = 1
+    )
+
+    // ✅ 新增:用於追蹤「首次解鎖」的成就
     var newlyUnlockedAchievements by remember { mutableStateOf<List<String>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ 結算時檢查成就
+    // ✅ 結算時檢查成就並播放音效+動畫
     LaunchedEffect(Unit) {
+        // 播放煙火音效
+        soundManager.playSFX("fireworks")
+        // 觸發動畫
+        playAnimation = true
+
         coroutineScope.launch {
             try {
                 val achievementManager = AchievementManager()
@@ -662,7 +711,10 @@ fun Level2ResultContent(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(0.85f)), Alignment.Center) {
+    Box(
+        Modifier.fillMaxSize().background(Color.Black.copy(0.85f)),
+        Alignment.Center
+    ) {
         Card(
             modifier = Modifier.width(420.dp).padding(16.dp),
             shape = RoundedCornerShape(24.dp),
@@ -715,6 +767,10 @@ fun Level2ResultContent(
                                 }
                             }
                         }
+
+                        if (achievementName != newlyUnlockedAchievements.last()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
 
@@ -749,6 +805,14 @@ fun Level2ResultContent(
                 }
             }
         }
+
+        // ✅ 煙火動畫覆蓋層
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
