@@ -22,7 +22,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -41,6 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.airbnb.lottie.RenderMode
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -152,7 +152,7 @@ fun Level1FollowBeatScreen(
         label = "rush"
     )
 
-    // ✅ 添加衝刺火焰特效動畫
+    // 衝刺火焰特效動畫
     val sprintFireComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.sprint_fire))
     var isSprintActive by remember { mutableStateOf(false) }
     val sprintFireProgress by animateLottieCompositionAsState(
@@ -167,19 +167,29 @@ fun Level1FollowBeatScreen(
     var optionsSoundPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var previousSelectedIndex by remember { mutableIntStateOf(0) }
 
-    // 資源載入
-    val charIdle = ImageBitmap.imageResource(id = R.drawable.character_1)
-    val charHit = ImageBitmap.imageResource(id = R.drawable.character_2)
-    val dogFrames = listOf(
-        ImageBitmap.imageResource(id = R.drawable.prairie_dog1),
-        ImageBitmap.imageResource(id = R.drawable.prairie_dog2),
-        ImageBitmap.imageResource(id = R.drawable.prairie_dog3)
-    )
-    val dogHit = ImageBitmap.imageResource(id = R.drawable.prairie_dog4)
-    val hitEffectBitmaps = listOf(
-        R.drawable.hit_feedback_1, R.drawable.hit_feedback_2, R.drawable.hit_feedback_3,
-        R.drawable.hit_feedback_4, R.drawable.hit_feedback_5, R.drawable.hit_feedback_6
-    ).map { ImageBitmap.imageResource(context.resources, it) }
+    // -----------------------------------------------------------
+    // ✅ 效能優化區塊：資源載入 (CRITICAL FIX)
+    // -----------------------------------------------------------
+    val charIdle = remember { ImageBitmap.imageResource(context.resources, R.drawable.character_1) }
+    val charHit = remember { ImageBitmap.imageResource(context.resources, R.drawable.character_2) }
+
+    val dogFrames = remember {
+        listOf(
+            ImageBitmap.imageResource(context.resources, R.drawable.prairie_dog1),
+            ImageBitmap.imageResource(context.resources, R.drawable.prairie_dog2),
+            ImageBitmap.imageResource(context.resources, R.drawable.prairie_dog3)
+        )
+    }
+
+    val dogHit = remember { ImageBitmap.imageResource(context.resources, R.drawable.prairie_dog4) }
+
+    val hitEffectBitmaps = remember {
+        listOf(
+            R.drawable.hit_feedback_1, R.drawable.hit_feedback_2, R.drawable.hit_feedback_3,
+            R.drawable.hit_feedback_4, R.drawable.hit_feedback_5, R.drawable.hit_feedback_6
+        ).map { ImageBitmap.imageResource(context.resources, it) }
+    }
+    // -----------------------------------------------------------
 
     val listState = rememberLazyListState()
     val perfectPhrases = remember { listOf("太棒了!", "太厲害了吧", "是個高手") }
@@ -221,7 +231,7 @@ fun Level1FollowBeatScreen(
         }
     }
 
-    // ✅ 監聽 combo 變化來控制火焰特效
+    // 監聽 combo 變化來控制火焰特效
     LaunchedEffect(combo, gameState) {
         if (gameState == GameState.PLAYING) {
             val wasSprintActive = isSprintActive
@@ -291,8 +301,12 @@ fun Level1FollowBeatScreen(
     // 時間更新與 Miss 判定
     LaunchedEffect(gameState) {
         if (gameState == GameState.PLAYING) {
+            // ✅ 優化：確保遊戲迴圈輕量化
             while (isActive) {
-                currentTime = System.currentTimeMillis() - startTime
+                withFrameMillis {
+                    currentTime = System.currentTimeMillis() - startTime
+                }
+
                 currentNotes.forEach { note ->
                     if (!note.isHit && (currentTime - note.targetTime > 250)) {
                         note.isHit = true
@@ -306,7 +320,6 @@ fun Level1FollowBeatScreen(
                 if (currentTime > selectedDifficulty.duration + 2000L) {
                     gameState = GameState.FINISHED
                 }
-                withFrameMillis { }
             }
         }
     }
@@ -418,26 +431,34 @@ fun Level1FollowBeatScreen(
 
     // UI 渲染
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A2E))) {
+
+        // ✅ 效能優化：背景 Blur 控制
+        val blurRadius = if (gameState == GameState.SELECTION) 25.dp else 0.dp
+
         Image(
             painter = painterResource(selectedDifficulty.bgResId),
             contentDescription = null,
-            modifier = Modifier.fillMaxSize().blur(if (gameState == GameState.SELECTION) 25.dp else 5.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(blurRadius),
             contentScale = ContentScale.Crop,
             alpha = 0.35f
         )
 
-        // ✅ 衝刺火焰特效層
+        // ✅ 效能優化：Lottie 衝刺火焰 (Hardware Acceleration)
         if (gameState == GameState.PLAYING && isSprintActive) {
             LottieAnimation(
                 composition = sprintFireComposition,
                 progress = { sprintFireProgress },
                 contentScale = ContentScale.Crop,
+                // ⭐ 關鍵：強制使用硬體加速，解決高解析度螢幕卡頓問題 ⭐
+                renderMode = RenderMode.HARDWARE,
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
                         translationY = size.height * 0.28f
+                        alpha = 0.3f // 在 Layer 層處理 Alpha 比直接 Modifier.alpha 更順
                     }
-                    .alpha(0.3f)
             )
         }
 
@@ -507,7 +528,7 @@ fun Level1FollowBeatScreen(
                 Box(modifier = Modifier.fillMaxSize().background(Color.Red.copy(alpha = penaltyFlashAlpha.value)))
             }
 
-            // ✅ 新增：左上角退出按鈕
+            // 左上角退出按鈕
             Button(
                 onClick = {
                     if (isNavigating) return@Button
@@ -593,6 +614,7 @@ fun Level1FollowBeatScreen(
                     val noteX = judgeLineX + (note.targetTime - currentTime) * speed
                     if (noteX in -150f..size.width + 150f) {
                         val dogImg = if (note.isHit) dogHit else dogFrames[((currentTime / 100) % 3).toInt()]
+
                         drawContext.canvas.save()
                         drawContext.canvas.translate(noteX, adjY)
                         drawContext.canvas.scale(-1f, 1f)
@@ -624,9 +646,9 @@ fun Level1FollowBeatScreen(
                 modifier = Modifier.align(Alignment.Center).padding(top = 250.dp)
             )
 
-            val progress = (currentTime.toFloat() / selectedDifficulty.duration.toFloat()).coerceIn(0f, 1f)
+            val progress = { (currentTime.toFloat() / selectedDifficulty.duration.toFloat()).coerceIn(0f, 1f) }
             LinearProgressIndicator(
-                progress = { progress },
+                progress = progress,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(8.dp),
                 color = selectedDifficulty.color,
                 trackColor = Color.Black.copy(0.5f)
@@ -668,12 +690,11 @@ fun GameResultContent(
     onExit: () -> Unit,
     isNavigating: Boolean,
     rankingViewModel: RankingViewModel = viewModel(),
-    soundManager: SoundManager // ✅ 新增參數
+    soundManager: SoundManager
 ) {
     val rank = GameScoreUtils.calculateRank(score, maxScore)
     val rankColor = GameScoreUtils.getRankColor(rank)
 
-    // ✅ 添加 Lottie 動畫
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.confetti))
     var playAnimation by remember { mutableStateOf(false) }
     val progress by animateLottieCompositionAsState(
@@ -683,54 +704,34 @@ fun GameResultContent(
         iterations = 1
     )
 
-    // ✅ 用於追蹤「首次解鎖」的成就
     var newlyUnlockedAchievements by remember { mutableStateOf<List<String>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ 遊戲結束時檢查成就並播放音效+動畫
     LaunchedEffect(Unit) {
-        // 播放煙火音效
         soundManager.playSFX("fireworks")
-        // 觸發動畫
         playAnimation = true
 
         coroutineScope.launch {
-            // 延遲確保分數已同步
             kotlinx.coroutines.delay(500)
-
             try {
                 val achievementManager = AchievementManager()
                 val currentScores = rankingViewModel.scores.value
-
-                Log.d("Level1Result", "=== 成就檢測 ===")
-                Log.d("Level1Result", "當前評級: $rank")
-                Log.d("Level1Result", "當前分數: $currentScores")
-
-                // ✅ 檢查並解鎖成就
                 val newlyUnlocked = achievementManager.checkAndUnlockAchievements(
                     scoreEntry = currentScores,
                     hasFeedback = false,
                     hasAvatar = false
                 )
 
-                Log.d("Level1Result", "新解鎖的成就 ID: $newlyUnlocked")
-
-                // ✅ 篩選出本次遊戲相關的成就
                 val gameRelatedAchievements = mutableListOf<String>()
-
-                // 成就 1: Score Champion／高分冠軍（任意難度 SSS）
                 if (1 in newlyUnlocked && rank == "SSS") {
                     gameRelatedAchievements.add("Score Champion／高分冠軍")
                 }
-
-                // 成就 6: Mode Three Completionist／模式三完成者
                 if (6 in newlyUnlocked) {
                     gameRelatedAchievements.add("Mode Three Completionist／模式三完成者")
                 }
 
                 if (gameRelatedAchievements.isNotEmpty()) {
                     newlyUnlockedAchievements = gameRelatedAchievements
-                    Log.d("Level1Result", "🎉 新解鎖成就: $gameRelatedAchievements")
                 }
             } catch (e: Exception) {
                 Log.e("Level1Result", "❌ 檢查成就失敗", e)
@@ -771,10 +772,8 @@ fun GameResultContent(
                     StatBubble("失誤", missCount, Color(0xFFFF5252))
                 }
 
-                // ✅ 顯示新解鎖的成就
                 if (newlyUnlockedAchievements.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
-
                     newlyUnlockedAchievements.forEach { achievementName ->
                         Card(
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f)),
@@ -842,7 +841,6 @@ fun GameResultContent(
             }
         }
 
-        // ✅ 煙火動畫覆蓋層
         LottieAnimation(
             composition = composition,
             progress = { progress },
